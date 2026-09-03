@@ -1,0 +1,611 @@
+<title>결제 리스크 콘솔</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --surface-2:#eef1f7; --surface-3:#e7ebf3;
+  --border:#dde3ee; --border-strong:#c6cee0;
+  --text:#1a2230; --muted:#5c6779; --dim:#8a94a6;
+  --accent:#4d5dd6; --accent-soft:#4d5dd61a; --on-accent:#ffffff;
+  --ok:#1f9d63; --verify:#b8801a; --hold:#d1691f; --block:#d43a56;
+  --ok-bg:#1f9d6318; --verify-bg:#b8801a18; --hold-bg:#d1691f18; --block-bg:#d43a5618;
+  --grid:#e9edf4;
+  --shadow:0 1px 2px rgba(20,30,50,.04),0 8px 24px rgba(20,30,50,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1117; --surface:#161c25; --surface-2:#1c232f; --surface-3:#232c3a;
+    --border:#2a3341; --border-strong:#3b4657;
+    --text:#e7ecf4; --muted:#9aa6b8; --dim:#66717f;
+    --accent:#8b9bff; --accent-soft:#8b9bff1f; --on-accent:#0d1117;
+    --ok:#3ecb84; --verify:#e2b93b; --hold:#f0883e; --block:#f2596f;
+    --ok-bg:#3ecb841f; --verify-bg:#e2b93b1f; --hold-bg:#f0883e1f; --block-bg:#f2596f1f;
+    --grid:#20293550;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --surface:#161c25; --surface-2:#1c232f; --surface-3:#232c3a;
+  --border:#2a3341; --border-strong:#3b4657;
+  --text:#e7ecf4; --muted:#9aa6b8; --dim:#66717f;
+  --accent:#8b9bff; --accent-soft:#8b9bff1f; --on-accent:#0d1117;
+  --ok:#3ecb84; --verify:#e2b93b; --hold:#f0883e; --block:#f2596f;
+  --ok-bg:#3ecb841f; --verify-bg:#e2b93b1f; --hold-bg:#f0883e1f; --block-bg:#f2596f1f;
+  --grid:#20293550;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+.mono{font-family:"IBM Plex Mono","IBM Plex Sans KR",monospace;font-variant-numeric:tabular-nums}
+.shell{max-width:1240px;margin:0 auto;padding:20px 22px 64px}
+
+/* top bar */
+.topbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:4px 2px 18px}
+.brand{display:flex;align-items:center;gap:11px}
+.brand-mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--on-accent);
+  display:grid;place-items:center;font-weight:700;font-size:17px;letter-spacing:-.5px}
+.brand-name{font-weight:600;font-size:15px;letter-spacing:-.2px;line-height:1.1}
+.brand-sub{font-size:11.5px;color:var(--dim);letter-spacing:.02em}
+.kpis{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:8px 14px;min-width:96px}
+.kpi .lab{font-size:11px;color:var(--muted);letter-spacing:.02em}
+.kpi .val{font-size:19px;font-weight:600;line-height:1.15;margin-top:1px}
+.kpi .val.block{color:var(--block)} .kpi .val.hold{color:var(--hold)} .kpi .val.ok{color:var(--ok)}
+.iconbtn{background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:16px;display:grid;place-items:center}
+.iconbtn:hover{border-color:var(--border-strong);color:var(--text)}
+
+/* tabs */
+.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px}
+.tab{border:0;background:transparent;color:var(--muted);font-family:inherit;font-size:13.5px;font-weight:500;
+  padding:8px 16px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* dashboard grid */
+.board{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
+@media(max-width:900px){.board{grid-template-columns:1fr}}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.panel-h h2{margin:0;font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--text)}
+.panel-h .count{font-size:11.5px;color:var(--dim)}
+
+/* queue */
+.queue{display:flex;flex-direction:column}
+.qitem{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;
+  padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;
+  background:transparent;border-left:3px solid transparent;font-family:inherit;color:inherit;width:100%}
+.qitem:last-child{border-bottom:0}
+.qitem:hover{background:var(--surface-2)}
+.qitem[aria-current="true"]{background:var(--accent-soft);border-left-color:var(--accent)}
+.qitem:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.avatar{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-weight:600;font-size:14px}
+.qmeta .nm{font-weight:600;font-size:13.5px;line-height:1.2}
+.qmeta .id{font-size:11.5px;color:var(--dim);margin-top:1px}
+.qmeta .rz{font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.qright{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.score-pill{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:15px;padding:1px 9px;border-radius:8px;line-height:1.4}
+.tag{font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:6px}
+.t-BLOCK{background:var(--block-bg);color:var(--block)} .s-BLOCK{background:var(--block-bg);color:var(--block)}
+.t-HOLD{background:var(--hold-bg);color:var(--hold)} .s-HOLD{background:var(--hold-bg);color:var(--hold)}
+.t-VERIFY{background:var(--verify-bg);color:var(--verify)} .s-VERIFY{background:var(--verify-bg);color:var(--verify)}
+.t-ALLOW{background:var(--ok-bg);color:var(--ok)} .s-ALLOW{background:var(--ok-bg);color:var(--ok)}
+
+/* detail */
+.detail{display:flex;flex-direction:column;gap:16px}
+.dhead{display:flex;align-items:flex-start;gap:14px;padding:18px 18px 16px}
+.dhead .avatar{width:48px;height:48px;font-size:17px;border-radius:12px}
+.dhead .who .nm{font-size:17px;font-weight:600;letter-spacing:-.2px}
+.dhead .who .id{font-size:12px;color:var(--dim);margin-top:2px}
+.dhead .who .meta{font-size:11.5px;color:var(--muted);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap}
+.dhead .who .meta span{display:inline-flex;align-items:center;gap:4px}
+.status-chip{margin-left:auto;text-align:right}
+.status-chip .lab{font-size:11px;color:var(--dim)}
+.status-chip .st{font-weight:600;font-size:14px;margin-top:2px}
+.st.BLOCKED{color:var(--block)} .st.SUSPECTED{color:var(--hold)} .st.CONFIRMED_FRAUD{color:var(--block)}
+.st.RELEASED{color:var(--ok)} .st.NORMAL{color:var(--muted)}
+
+/* score block */
+.scoreblock{padding:0 18px 18px}
+.scorerow{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+.bignum{font-family:"IBM Plex Mono",monospace;font-size:44px;font-weight:600;letter-spacing:-1px;line-height:1}
+.actionlab{font-size:13px;font-weight:600;padding:3px 10px;border-radius:8px}
+.risk-scale{position:relative;height:34px;margin-top:4px}
+.scale-track{position:absolute;top:11px;left:0;right:0;height:8px;border-radius:5px;overflow:hidden;display:flex}
+.scale-track i{height:100%}
+.scale-track .z1{width:30%;background:var(--ok)} .scale-track .z2{width:20%;background:var(--verify)}
+.scale-track .z3{width:20%;background:var(--hold)} .scale-track .z4{width:30%;background:var(--block)}
+.scale-track i{opacity:.32}
+.scale-marker{position:absolute;top:2px;width:3px;height:26px;background:var(--text);border-radius:2px;
+  transition:left .5s cubic-bezier(.22,1,.36,1)}
+.scale-marker::after{content:"";position:absolute;top:-4px;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--text)}
+.scale-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px}
+
+/* stat grid */
+.section{padding:16px 18px;border-top:1px solid var(--border)}
+.section h3{margin:0 0 12px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.03em;
+  display:flex;align-items:center;gap:7px}
+.section h3 .win{font-weight:400;color:var(--dim)}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:9px}
+.stat{background:var(--surface-2);border-radius:10px;padding:10px 11px}
+.stat .lab{font-size:11px;color:var(--muted)}
+.stat .v{font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:600;margin-top:2px;line-height:1.1}
+.stat .v small{font-size:12px;color:var(--dim);font-weight:400}
+.stat.warn .v{color:var(--hold)} .stat.bad .v{color:var(--block)}
+
+/* card relations */
+.cardrel{display:flex;flex-direction:column;gap:7px}
+.crow{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:center;
+  background:var(--surface-2);border-radius:10px;padding:9px 12px;border-left:3px solid transparent}
+.crow.flag{border-left-color:var(--block);background:var(--block-bg)}
+.crow .ck{font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:500}
+.crow .issuer{font-size:11px;color:var(--dim)}
+.acctbadge{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;padding:2px 9px;border-radius:7px;
+  background:var(--surface-3);color:var(--muted)}
+.crow.flag .acctbadge{background:var(--block);color:#fff}
+.crow .signal{font-size:10.5px;color:var(--block);font-weight:600;display:flex;align-items:center;gap:3px}
+
+/* factors */
+.factorlist{display:flex;flex-direction:column;gap:8px}
+.factor{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.factor .fmeta{display:flex;flex-direction:column;gap:3px;min-width:0}
+.factor .fc{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+.factor .fl{font-size:12.5px;font-weight:500}
+.factor .fbarwrap{grid-column:1/-1;height:6px;background:var(--surface-3);border-radius:4px;overflow:hidden}
+.factor .fbar{height:100%;background:var(--accent);border-radius:4px}
+.factor .fs{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13px;color:var(--accent)}
+
+/* events */
+.timeline{display:flex;flex-direction:column;gap:0}
+.ev{display:grid;grid-template-columns:auto 1fr;gap:12px;padding-bottom:14px;position:relative}
+.ev:not(:last-child)::before{content:"";position:absolute;left:5px;top:14px;bottom:-2px;width:2px;background:var(--border)}
+.ev .dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--surface);background:var(--accent);margin-top:2px;z-index:1}
+.ev .dot.block{background:var(--block)} .ev .dot.ok{background:var(--ok)} .ev .dot.neutral{background:var(--dim)}
+.ev .etxt{font-size:12.5px} .ev .etime{font-size:11px;color:var(--dim);margin-top:1px}
+.ev .actor{color:var(--muted)}
+
+/* action buttons */
+.actions{display:flex;gap:8px;flex-wrap:wrap;padding:16px 18px;border-top:1px solid var(--border)}
+.btn{font-family:inherit;font-size:13px;font-weight:500;padding:9px 15px;border-radius:10px;cursor:pointer;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--text);display:flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface-2)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.danger{background:var(--block);border-color:var(--block);color:#fff}
+.btn.danger:hover{filter:brightness(1.06)}
+.btn.good{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.good:hover{filter:brightness(1.06)}
+
+/* simulator */
+.sim{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media(max-width:900px){.sim{grid-template-columns:1fr}}
+.ctrl{padding:16px 18px;border-top:1px solid var(--border)}
+.ctrl:first-child{border-top:0}
+.ctrl .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+.ctrl .top label{font-size:13px;font-weight:500}
+.ctrl .top .out{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600;color:var(--accent)}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:4px;
+  background:var(--surface-3);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--accent);cursor:pointer;border:3px solid var(--surface);box-shadow:0 0 0 1px var(--border-strong)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);
+  cursor:pointer;border:3px solid var(--surface)}
+.toggles{display:flex;gap:8px;flex-wrap:wrap}
+.tg{font-family:inherit;font-size:12.5px;font-weight:500;padding:7px 12px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--muted)}
+.tg[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.hint{font-size:11.5px;color:var(--dim);margin-top:7px}
+.simout{position:sticky;top:16px}
+.simscore{padding:20px 18px;text-align:center;border-bottom:1px solid var(--border)}
+.simscore .n{font-family:"IBM Plex Mono",monospace;font-size:60px;font-weight:600;letter-spacing:-2px;line-height:1}
+.simscore .a{font-size:15px;font-weight:600;margin-top:6px;display:inline-block;padding:4px 14px;border-radius:9px}
+.codebox{margin:14px 18px 18px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+  padding:12px 13px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);
+  white-space:pre;overflow-x:auto;line-height:1.6}
+.codebox .k{color:var(--accent)} .codebox .b{color:var(--block)} .codebox .g{color:var(--ok)}
+.foot{margin-top:24px;font-size:11.5px;color:var(--dim);text-align:center;line-height:1.7}
+.foot code{font-family:"IBM Plex Mono",monospace;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">투</div>
+      <div>
+        <div class="brand-name">결제 리스크 콘솔</div>
+        <div class="brand-sub">다중 카드 충전 어뷰징 탐지 · 강냉이 캐시</div>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="lab">오늘 차단</div><div class="val block mono" id="kpiBlock">14</div></div>
+      <div class="kpi"><div class="lab">보류·검토</div><div class="val hold mono" id="kpiHold">23</div></div>
+      <div class="kpi"><div class="lab">확정 케이스</div><div class="val mono">6</div></div>
+      <div class="kpi"><div class="lab">평균 Risk</div><div class="val mono">31</div></div>
+    </div>
+    <button class="iconbtn" id="themeBtn" aria-label="테마 전환" title="라이트/다크 전환">◐</button>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="화면 전환">
+    <button class="tab" role="tab" aria-selected="true" id="tab-board" aria-controls="view-board">
+      <span aria-hidden="true">▤</span> 탐지 대시보드</button>
+    <button class="tab" role="tab" aria-selected="false" id="tab-sim" aria-controls="view-sim">
+      <span aria-hidden="true">◈</span> Risk 시뮬레이터</button>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="view-board" role="tabpanel" aria-labelledby="tab-board">
+    <div class="board">
+      <div class="panel">
+        <div class="panel-h"><h2>의심 케이스 큐</h2><span class="count" id="qcount"></span></div>
+        <div class="queue" id="queue" role="listbox" aria-label="의심 케이스 목록"></div>
+      </div>
+      <div class="panel detail" id="detail"></div>
+    </div>
+  </div>
+
+  <!-- ============ SIMULATOR ============ -->
+  <div id="view-sim" role="tabpanel" aria-labelledby="tab-sim" hidden>
+    <div class="sim">
+      <div class="panel">
+        <div class="panel-h"><h2>Pre-Risk 입력 특징</h2><span class="count">RuleEngine.evaluate()</span></div>
+        <div class="ctrl">
+          <div class="top"><label for="s_cards">1시간 내 서로 다른 카드</label><span class="out mono" id="o_cards">1장</span></div>
+          <input type="range" id="s_cards" min="1" max="8" step="1" value="1">
+          <div class="hint">3장 → +15 · 5장 이상 → 추가 +35</div>
+        </div>
+        <div class="ctrl">
+          <div class="top"><label for="s_fail">1시간 내 결제 실패</label><span class="out mono" id="o_fail">0회</span></div>
+          <input type="range" id="s_fail" min="0" max="10" step="1" value="0">
+          <div class="hint">3회 이상 → +20</div>
+        </div>
+        <div class="ctrl">
+          <div class="top"><label for="s_attempt">1시간 내 총 결제 시도</label><span class="out mono" id="o_attempt">1회</span></div>
+          <input type="range" id="s_attempt" min="1" max="12" step="1" value="1">
+          <div class="hint">실패율 70% 이상 → +20</div>
+        </div>
+        <div class="ctrl">
+          <div class="top"><label for="s_cardacct">이 카드가 쓰인 계정 수 <span style="color:var(--block)">(24h)</span></label><span class="out mono" id="o_cardacct">1개</span></div>
+          <input type="range" id="s_cardacct" min="1" max="6" step="1" value="1">
+          <div class="hint">3계정 → +40 · <b>5계정 이상 → 즉시 차단</b></div>
+        </div>
+        <div class="ctrl">
+          <div class="top"><label for="s_devacct">이 기기가 쓰인 계정 수 (24h)</label><span class="out mono" id="o_devacct">1개</span></div>
+          <input type="range" id="s_devacct" min="1" max="6" step="1" value="1">
+          <div class="hint">3계정 이상 → +30</div>
+        </div>
+        <div class="ctrl">
+          <div class="top"><label for="s_amount">충전 금액</label><span class="out mono" id="o_amount">10,000원</span></div>
+          <input type="range" id="s_amount" min="10000" max="1500000" step="10000" value="10000">
+          <div class="hint">10만 +10 · 30만 +20 · 50만 +30 · 100만 +50 · (50만↑는 Action 가중)</div>
+        </div>
+        <div class="ctrl">
+          <div class="top"><label>계정·수단 상태</label></div>
+          <div class="toggles">
+            <button class="tg" id="s_newcard" aria-pressed="false">신규 카드 +10</button>
+            <button class="tg" id="s_newacct" aria-pressed="false">신규 가입 계정 +10</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel simout">
+        <div class="panel-h"><h2>평가 결과</h2><span class="count">phase = PRE</span></div>
+        <div class="simscore">
+          <div class="n mono" id="simN">0</div>
+          <div class="a" id="simA">ALLOW</div>
+          <div class="risk-scale" style="margin:16px 8px 0">
+            <div class="scale-track"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i></div>
+            <div class="scale-marker" id="simMarker" style="left:0%"></div>
+            <div class="scale-labels"><span>0</span><span>30</span><span>50</span><span>70</span><span>100+</span></div>
+          </div>
+        </div>
+        <div class="section" style="border-top:0">
+          <h3>탐지 사유 <span class="win">factors</span></h3>
+          <div class="factorlist" id="simFactors"></div>
+        </div>
+        <div class="codebox" id="simCode"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    설계 문서 <code>FRAUD_DETECTION.md</code> 기준 예시 화면 · 데이터는 데모용 목업입니다.<br>
+    Risk 임계값 초기 정책 — <b>ALLOW</b> 0~29 · <b>VERIFY</b> 30~49 · <b>HOLD</b> 50~69 · <b>BLOCK</b> 70+ (금액 가중 적용)
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---- theme ---- */
+  var root=document.documentElement, tb=document.getElementById("themeBtn");
+  try{var sv=localStorage.getItem("frc-theme"); if(sv)root.setAttribute("data-theme",sv);}catch(e){}
+  tb.addEventListener("click",function(){
+    var cur=root.getAttribute("data-theme");
+    var isDark = cur? cur==="dark" : matchMedia("(prefers-color-scheme:dark)").matches;
+    var next=isDark?"light":"dark";
+    root.setAttribute("data-theme",next);
+    try{localStorage.setItem("frc-theme",next);}catch(e){}
+  });
+
+  /* ---- factor labels ---- */
+  var LABELS={
+    MULTIPLE_CARDS_1H:"단시간 다중 카드",
+    EXCESSIVE_CARDS_1H:"카드 과다 사용",
+    MULTIPLE_FAILURES:"결제 반복 실패",
+    HIGH_FAILURE_RATE:"높은 실패율",
+    CARD_MULTI_ACCOUNT:"동일 카드 다계정",
+    DEVICE_MULTI_ACCOUNT:"동일 기기 다계정",
+    NEW_CARD:"신규 결제수단",
+    NEW_ACCOUNT:"신규 가입 계정",
+    HIGH_AMOUNT:"고액 충전",
+    HARD_CARD_5_ACCOUNTS:"즉시 차단 · 카드 5계정+"
+  };
+
+  /* ---- RuleEngine (FRAUD_DETECTION.md §6 이식) ---- */
+  function amountFactor(a){
+    if(a>=1000000)return{code:"HIGH_AMOUNT",score:50};
+    if(a>=500000)return{code:"HIGH_AMOUNT",score:30};
+    if(a>=300000)return{code:"HIGH_AMOUNT",score:20};
+    if(a>=100000)return{code:"HIGH_AMOUNT",score:10};
+    return null;
+  }
+  function decideAction(score,amount){
+    var high=amount>=500000;
+    if(score>=70)return"BLOCK";
+    if(score>=50)return"HOLD";
+    if(score>=30)return high?"HOLD":"VERIFY";
+    return"ALLOW";
+  }
+  function evaluate(f){
+    // hard rule
+    if(f.usersByCard24h>=5){
+      return{score:100,action:"BLOCK",hard:true,
+        factors:[{code:"HARD_CARD_5_ACCOUNTS",score:100}]};
+    }
+    var fx=[];
+    if(f.distinctCards1h>=3)fx.push({code:"MULTIPLE_CARDS_1H",score:15});
+    if(f.distinctCards1h>=5)fx.push({code:"EXCESSIVE_CARDS_1H",score:35});
+    if(f.failures1h>=3)fx.push({code:"MULTIPLE_FAILURES",score:20});
+    var rate=f.failures1h/Math.max(f.attempts1h,1);
+    if(rate>=0.7)fx.push({code:"HIGH_FAILURE_RATE",score:20});
+    if(f.usersByCard24h>=3)fx.push({code:"CARD_MULTI_ACCOUNT",score:40});
+    if(f.usersByDevice24h>=3)fx.push({code:"DEVICE_MULTI_ACCOUNT",score:30});
+    if(f.isNewCard)fx.push({code:"NEW_CARD",score:10});
+    if(f.isNewAccount)fx.push({code:"NEW_ACCOUNT",score:10});
+    var am=amountFactor(f.amount); if(am)fx.push(am);
+    var score=fx.reduce(function(s,x){return s+x.score},0);
+    return{score:score,action:decideAction(score,f.amount),hard:false,factors:fx};
+  }
+
+  var won=new Intl.NumberFormat("ko-KR");
+
+  /* ---- mock cases ---- */
+  var CASES=[
+    {id:1000123,nick:"밤샘고양이",joined:"14개월 전",status:"BLOCKED",
+     features:{distinctCards1h:5,failures1h:6,attempts1h:8,usersByCard24h:3,usersByDevice24h:1,isNewCard:false,isNewAccount:false,amount:780000},
+     stats:{cards:5,attempts:8,success:2,fail:6,amount:780000,ip:2,device:1},
+     cards:[{k:"tok_9f3a…A1",issuer:"신한 · 개인체크",acct:3},{k:"tok_2b7c…B4",issuer:"국민 · 개인신용",acct:1},
+            {k:"tok_5e11…C9",issuer:"우리 · 개인신용",acct:1},{k:"tok_8d02…D7",issuer:"하나 · 개인체크",acct:1},
+            {k:"tok_1a6f…E2",issuer:"토스 · 개인신용",acct:1}],
+     events:[{t:"BLOCK",time:"오늘 02:14",txt:"결제 요청 차단 — Risk 160",dot:"block",actor:"자동 엔진"},
+             {t:"OPEN",time:"오늘 02:14",txt:"어뷰징 케이스 생성 (SUSPECTED)",dot:"neutral",actor:"자동 엔진"},
+             {t:"ATTEMPT",time:"오늘 02:06~02:13",txt:"카드 5장 · 8회 시도 (실패 6)",dot:"neutral",actor:"—"}]},
+    {id:1000789,nick:"콘팝콘",joined:"3일 전",status:"BLOCKED",
+     features:{distinctCards1h:2,failures1h:1,attempts1h:3,usersByCard24h:1,usersByDevice24h:4,isNewCard:true,isNewAccount:true,amount:300000},
+     stats:{cards:2,attempts:3,success:1,fail:1,amount:300000,ip:1,device:1},
+     cards:[{k:"tok_77aa…K3",issuer:"카카오 · 개인신용",acct:1},{k:"tok_c410…M8",issuer:"현대 · 개인신용",acct:1}],
+     events:[{t:"BLOCK",time:"오늘 11:02",txt:"결제 요청 차단 — Risk 70",dot:"block",actor:"자동 엔진"},
+             {t:"OPEN",time:"오늘 11:02",txt:"어뷰징 케이스 생성 (SUSPECTED)",dot:"neutral",actor:"자동 엔진"},
+             {t:"SIGNUP",time:"3일 전",txt:"신규 가입 · 본인인증 완료",dot:"ok",actor:"—"}]},
+    {id:1000234,nick:"야간충전러",joined:"7개월 전",status:"SUSPECTED",
+     features:{distinctCards1h:4,failures1h:2,attempts1h:5,usersByCard24h:2,usersByDevice24h:1,isNewCard:true,isNewAccount:false,amount:500000},
+     stats:{cards:4,attempts:5,success:3,fail:2,amount:500000,ip:1,device:1},
+     cards:[{k:"tok_31bd…P2",issuer:"신한 · 개인신용",acct:2},{k:"tok_9c02…Q5",issuer:"국민 · 개인체크",acct:1},
+            {k:"tok_44ef…R1",issuer:"삼성 · 개인신용",acct:1},{k:"tok_7a80…S9",issuer:"토스 · 개인신용",acct:1}],
+     events:[{t:"HOLD",time:"오늘 09:41",txt:"충전 보류 — Risk 55 (추가 인증 요청)",dot:"neutral",actor:"자동 엔진"},
+             {t:"OPEN",time:"오늘 09:41",txt:"어뷰징 케이스 생성 (SUSPECTED)",dot:"neutral",actor:"자동 엔진"}]},
+    {id:1000456,nick:"별빛후원",joined:"2년 전",status:"NORMAL",
+     features:{distinctCards1h:3,failures1h:1,attempts1h:4,usersByCard24h:1,usersByDevice24h:1,isNewCard:true,isNewAccount:false,amount:150000},
+     stats:{cards:3,attempts:4,success:3,fail:1,amount:150000,ip:1,device:1},
+     cards:[{k:"tok_be71…T6",issuer:"국민 · 개인신용",acct:1},{k:"tok_0d3a…U2",issuer:"신한 · 개인체크",acct:1},
+            {k:"tok_92c8…V4",issuer:"카카오 · 개인신용",acct:1}],
+     events:[{t:"VERIFY",time:"오늘 08:20",txt:"추가 본인인증 요청 — Risk 35",dot:"neutral",actor:"자동 엔진"},
+             {t:"RESULT",time:"오늘 08:21",txt:"본인인증 성공 → 결제 진행",dot:"ok",actor:"본인"}]}
+  ];
+
+  function avatarColor(id){
+    var hues=[{b:"var(--accent-soft)",c:"var(--accent)"},{b:"var(--hold-bg)",c:"var(--hold)"},
+              {b:"var(--block-bg)",c:"var(--block)"},{b:"var(--ok-bg)",c:"var(--ok)"}];
+    return hues[id%hues.length];
+  }
+  function scaleColor(action){return"var(--"+({BLOCK:"block",HOLD:"hold",VERIFY:"verify",ALLOW:"ok"}[action])+")";}
+
+  /* ---- queue ---- */
+  var selected=CASES[0].id;
+  var queue=document.getElementById("queue");
+  document.getElementById("qcount").textContent=CASES.length+"건";
+
+  function reasonSummary(ev){var e=evaluate(ev.features);
+    return e.factors.slice(0,3).map(function(x){return LABELS[x.code]}).join(" · ");}
+
+  function renderQueue(){
+    queue.innerHTML="";
+    CASES.forEach(function(c){
+      var ev=evaluate(c.features);
+      var col=avatarColor(c.id);
+      var b=document.createElement("button");
+      b.className="qitem";b.setAttribute("role","option");
+      b.setAttribute("aria-current",c.id===selected?"true":"false");
+      b.setAttribute("aria-selected",c.id===selected?"true":"false");
+      b.innerHTML=
+        '<span class="avatar" style="background:'+col.b+';color:'+col.c+'">'+c.nick.charAt(0)+'</span>'+
+        '<span class="qmeta"><span class="nm">'+c.nick+'</span>'+
+          '<span class="id mono">DONOR '+c.id+'</span>'+
+          '<span class="rz">'+reasonSummary(c)+'</span></span>'+
+        '<span class="qright">'+
+          '<span class="score-pill s-'+ev.action+'">'+ev.score+'</span>'+
+          '<span class="tag t-'+ev.action+'">'+ev.action+'</span></span>';
+      b.addEventListener("click",function(){selected=c.id;renderQueue();renderDetail();});
+      queue.appendChild(b);
+    });
+  }
+
+  /* ---- detail ---- */
+  var detail=document.getElementById("detail");
+  function esc(s){return String(s).replace(/[&<>]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[m]});}
+
+  function renderDetail(){
+    var c=CASES.filter(function(x){return x.id===selected})[0];
+    var ev=evaluate(c.features);
+    var col=avatarColor(c.id);
+    var s=c.stats;
+    var failRate=Math.round(s.fail/Math.max(s.attempts,1)*100);
+    var markerLeft=Math.min(ev.score,100);
+
+    var statHtml=
+      '<div class="stat'+(s.cards>=5?' bad':s.cards>=3?' warn':'')+'"><div class="lab">카드 수</div><div class="v">'+s.cards+'<small> 장</small></div></div>'+
+      '<div class="stat'+(s.fail>=3?' bad':'')+'"><div class="lab">시도 / 실패</div><div class="v">'+s.attempts+'<small> / '+s.fail+'</small></div></div>'+
+      '<div class="stat'+(failRate>=70?' bad':failRate>=50?' warn':'')+'"><div class="lab">실패율</div><div class="v">'+failRate+'<small>%</small></div></div>'+
+      '<div class="stat'+(s.amount>=500000?' warn':'')+'"><div class="lab">충전 금액</div><div class="v">'+won.format(s.amount)+'<small>원</small></div></div>'+
+      '<div class="stat"><div class="lab">IP</div><div class="v">'+s.ip+'<small> 개</small></div></div>'+
+      '<div class="stat"><div class="lab">기기</div><div class="v">'+s.device+'<small> 개</small></div></div>';
+
+    var cardHtml=c.cards.map(function(cd){
+      var flag=cd.acct>=3;
+      return '<div class="crow'+(flag?' flag':'')+'">'+
+        '<span><span class="ck">'+esc(cd.k)+'</span><br><span class="issuer">'+esc(cd.issuer)+'</span></span>'+
+        '<span class="signal">'+(flag?'<span aria-hidden="true">▲</span> 카드 공유 의심':'')+'</span>'+
+        '<span class="acctbadge">'+cd.acct+'계정</span></div>';
+    }).join("");
+
+    var factorHtml=ev.factors.map(function(x){
+      var w=Math.min(x.score,100);
+      return '<div class="factor"><div class="fmeta"><span class="fl">'+(LABELS[x.code]||x.code)+'</span>'+
+        '<span class="fc">'+x.code+'</span></div><span class="fs">+'+x.score+'</span>'+
+        '<div class="fbarwrap"><div class="fbar" style="width:'+w+'%"></div></div></div>';
+    }).join("");
+
+    var evHtml=c.events.map(function(e){
+      return '<div class="ev"><span class="dot '+e.dot+'"></span><div>'+
+        '<div class="etxt">'+esc(e.txt)+'</div>'+
+        '<div class="etime">'+esc(e.time)+' · <span class="actor">'+esc(e.actor)+'</span></div></div></div>';
+    }).join("");
+
+    detail.innerHTML=
+      '<div class="dhead">'+
+        '<span class="avatar" style="background:'+col.b+';color:'+col.c+'">'+c.nick.charAt(0)+'</span>'+
+        '<div class="who"><div class="nm">'+c.nick+'</div><div class="id mono">DONOR '+c.id+'</div>'+
+          '<div class="meta"><span>가입 '+c.joined+'</span><span>본인인증 완료</span><span class="mono">CI ✓</span></div></div>'+
+        '<div class="status-chip"><div class="lab">케이스 상태</div><div class="st '+c.status+'">'+c.status+'</div></div>'+
+      '</div>'+
+      '<div class="scoreblock">'+
+        '<div class="scorerow"><span class="bignum" style="color:'+scaleColor(ev.action)+'">'+ev.score+'</span>'+
+          '<span class="actionlab s-'+ev.action+'">'+ev.action+(ev.hard?' · 즉시차단':'')+'</span></div>'+
+        '<div class="risk-scale"><div class="scale-track"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i></div>'+
+          '<div class="scale-marker" style="left:'+markerLeft+'%"></div>'+
+          '<div class="scale-labels"><span>0</span><span>30</span><span>50</span><span>70</span><span>100+</span></div></div>'+
+      '</div>'+
+      '<div class="section"><h3>최근 행동 <span class="win">· 슬라이딩 윈도우 1h</span></h3>'+
+        '<div class="statgrid">'+statHtml+'</div></div>'+
+      '<div class="section"><h3>결제수단 관계 <span class="win">· PAYMENT_INSTRUMENT ↔ USER</span></h3>'+
+        '<div class="cardrel">'+cardHtml+'</div></div>'+
+      '<div class="section"><h3>탐지 사유 <span class="win">· factors</span></h3>'+
+        '<div class="factorlist">'+factorHtml+'</div></div>'+
+      '<div class="section"><h3>처리 이력 <span class="win">· FRAUD_CASE_EVENT</span></h3>'+
+        '<div class="timeline">'+evHtml+'</div></div>'+
+      '<div class="actions">'+
+        '<button class="btn danger" data-act="CONFIRM"><span aria-hidden="true">⊘</span> 부정결제 확정</button>'+
+        '<button class="btn" data-act="BLOCK_CARD"><span aria-hidden="true">▤</span> 결제수단 차단</button>'+
+        '<button class="btn good" data-act="RELEASE"><span aria-hidden="true">✓</span> 정상 해제</button>'+
+      '</div>';
+
+    Array.prototype.forEach.call(detail.querySelectorAll("[data-act]"),function(btn){
+      btn.addEventListener("click",function(){
+        var act=btn.getAttribute("data-act");
+        var map={CONFIRM:{st:"CONFIRMED_FRAUD",txt:"부정결제로 확정 처리",dot:"block"},
+                 BLOCK_CARD:{st:c.status,txt:"결제수단 상태를 BLOCKED로 변경",dot:"block"},
+                 RELEASE:{st:"RELEASED",txt:"정상 사용자로 판정 · 케이스 해제",dot:"ok"}};
+        var m=map[act];
+        c.status=m.st;
+        c.events.unshift({t:act,time:"방금",txt:m.txt,dot:m.dot,actor:"운영자"});
+        renderDetail();
+      });
+    });
+  }
+
+  /* ---- tabs ---- */
+  var tabBoard=document.getElementById("tab-board"),tabSim=document.getElementById("tab-sim");
+  var vBoard=document.getElementById("view-board"),vSim=document.getElementById("view-sim");
+  function selTab(which){
+    var board=which==="board";
+    tabBoard.setAttribute("aria-selected",board);tabSim.setAttribute("aria-selected",!board);
+    vBoard.hidden=!board;vSim.hidden=board;
+  }
+  tabBoard.addEventListener("click",function(){selTab("board")});
+  tabSim.addEventListener("click",function(){selTab("sim")});
+
+  /* ---- simulator ---- */
+  var S={cards:"s_cards",fail:"s_fail",attempt:"s_attempt",cardacct:"s_cardacct",devacct:"s_devacct",amount:"s_amount"};
+  var newcard=document.getElementById("s_newcard"),newacct=document.getElementById("s_newacct");
+  function simFeatures(){
+    return{
+      distinctCards1h:+val("s_cards"),failures1h:+val("s_fail"),attempts1h:+val("s_attempt"),
+      usersByCard24h:+val("s_cardacct"),usersByDevice24h:+val("s_devacct"),amount:+val("s_amount"),
+      isNewCard:newcard.getAttribute("aria-pressed")==="true",
+      isNewAccount:newacct.getAttribute("aria-pressed")==="true"
+    };
+  }
+  function val(id){return document.getElementById(id).value;}
+  function renderSim(){
+    // guard: 실패는 시도보다 클 수 없음
+    var at=document.getElementById("s_attempt"),fa=document.getElementById("s_fail");
+    if(+fa.value>+at.value){at.value=fa.value;}
+    document.getElementById("o_cards").textContent=val("s_cards")+"장";
+    document.getElementById("o_fail").textContent=val("s_fail")+"회";
+    document.getElementById("o_attempt").textContent=val("s_attempt")+"회";
+    document.getElementById("o_cardacct").textContent=val("s_cardacct")+"개";
+    document.getElementById("o_devacct").textContent=val("s_devacct")+"개";
+    document.getElementById("o_amount").textContent=won.format(+val("s_amount"))+"원";
+
+    var f=simFeatures(),ev=evaluate(f);
+    var color=scaleColor(ev.action);
+    var n=document.getElementById("simN");n.textContent=ev.score;n.style.color=color;
+    var a=document.getElementById("simA");a.textContent=ev.action+(ev.hard?" · 즉시차단":"");
+    a.className="a s-"+ev.action;
+    document.getElementById("simMarker").style.left=Math.min(ev.score,100)+"%";
+
+    document.getElementById("simFactors").innerHTML= ev.factors.length? ev.factors.map(function(x){
+      var w=Math.min(x.score,100);
+      return '<div class="factor"><div class="fmeta"><span class="fl">'+(LABELS[x.code]||x.code)+'</span>'+
+        '<span class="fc">'+x.code+'</span></div><span class="fs">+'+x.score+'</span>'+
+        '<div class="fbarwrap"><div class="fbar" style="width:'+w+'%"></div></div></div>';
+    }).join("") : '<div class="hint" style="margin:0">가산된 사유 없음 · 정상 결제로 판단</div>';
+
+    var rate=(f.failures1h/Math.max(f.attempts1h,1)*100).toFixed(0);
+    var acol={BLOCK:"b",HOLD:"b",VERIFY:"k",ALLOW:"g"}[ev.action];
+    document.getElementById("simCode").innerHTML=
+      '<span class="k">features</span> {\n'+
+      '  distinctCards1h: '+f.distinctCards1h+', failures1h: '+f.failures1h+',\n'+
+      '  attempts1h: '+f.attempts1h+', failureRate: '+rate+'%,\n'+
+      '  usersByCard24h: '+f.usersByCard24h+', usersByDevice24h: '+f.usersByDevice24h+',\n'+
+      '  isNewCard: '+f.isNewCard+', isNewAccount: '+f.isNewAccount+',\n'+
+      '  amount: '+won.format(f.amount)+'\n}\n'+
+      '→ score = <span class="'+acol+'">'+ev.score+'</span>   action = <span class="'+acol+'">'+ev.action+'</span>';
+  }
+  Object.keys(S).forEach(function(k){document.getElementById(S[k]).addEventListener("input",renderSim);});
+  [newcard,newacct].forEach(function(t){t.addEventListener("click",function(){
+    t.setAttribute("aria-pressed",t.getAttribute("aria-pressed")==="true"?"false":"true");renderSim();});});
+
+  renderQueue();renderDetail();renderSim();
+})();
+</script>
