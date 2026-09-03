@@ -185,13 +185,21 @@ body{
 .actions{display:flex;gap:8px;flex-wrap:wrap;padding:16px 18px;border-top:1px solid var(--border)}
 .actions.top{border-top:0;padding:14px 18px 4px}
 
-/* detail tabs */
-.dtabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--border);overflow-x:auto}
-.dtab{border:0;background:transparent;color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:500;
-  padding:11px 11px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
-.dtab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
-.dtab:hover{color:var(--text)}
-.dtab:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px}
+/* detail tabs — segmented control */
+.dtabs{display:flex;gap:4px;margin:14px 16px 2px;padding:4px;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:12px;overflow-x:auto}
+.dtab{flex:1 1 auto;min-width:max-content;border:0;background:transparent;color:var(--muted);
+  font-family:inherit;font-size:12.5px;font-weight:600;padding:9px 10px;border-radius:9px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;
+  transition:background .15s,color .15s}
+.dtab .dtb{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:700;padding:0 5px;
+  border-radius:999px;background:var(--surface-3);color:var(--muted);line-height:1.5}
+.dtab[aria-selected="true"]{background:var(--accent);color:var(--on-accent);box-shadow:0 1px 4px rgba(20,30,55,.18)}
+.dtab[aria-selected="true"] .dtb{background:rgba(255,255,255,.28);color:var(--on-accent)}
+.dtab[aria-selected="true"] .dtb.flag{background:var(--block);color:#fff}
+.dtab:not([aria-selected="true"]):hover{color:var(--text);background:var(--surface-3)}
+.dtab:not([aria-selected="true"]) .dtb.flag{background:var(--block);color:#fff}
+.dtab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .dtab-panel .section:first-child{border-top:0}
 .btn{font-family:inherit;font-size:13px;font-weight:500;padding:9px 15px;border-radius:10px;cursor:pointer;
   border:1px solid var(--border-strong);background:var(--surface);color:var(--text);display:flex;align-items:center;gap:6px}
@@ -805,6 +813,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
     var s=c.stats;
     var failRate=Math.round(s.fail/Math.max(s.attempts,1)*100);
     var markerLeft=Math.min(ev.score,100);
+    var flaggedCards=c.cards.filter(function(cd){return cd.acct>=3;}).length;
 
     var statHtml=
       '<div class="stat'+(s.cards>=5?' bad':s.cards>=3?' warn':'')+'"><div class="lab">카드 수</div><div class="v">'+s.cards+'<small> 장</small></div></div>'+
@@ -866,9 +875,10 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
       '</div>'+
       '<div class="dtabs" role="tablist" aria-label="상세 탭">'+
         '<button class="dtab" role="tab" type="button" data-dtab="summary">요약</button>'+
-        '<button class="dtab" role="tab" type="button" data-dtab="cards">결제수단관계</button>'+
-        '<button class="dtab" role="tab" type="button" data-dtab="factors">탐지 사유</button>'+
-        '<button class="dtab" role="tab" type="button" data-dtab="events">처리 이력</button>'+
+        '<button class="dtab" role="tab" type="button" data-dtab="cards">결제수단관계'+
+          (flaggedCards>0?'<span class="dtb flag">'+flaggedCards+'</span>':'<span class="dtb">'+c.cards.length+'</span>')+'</button>'+
+        '<button class="dtab" role="tab" type="button" data-dtab="factors">탐지 사유<span class="dtb">'+ev.factors.length+'</span></button>'+
+        '<button class="dtab" role="tab" type="button" data-dtab="events">처리 이력<span class="dtb">'+c.events.length+'</span></button>'+
       '</div>'+
       '<div class="dtab-panel" data-dpanel="summary" role="tabpanel">'+
         actionsHtml+
