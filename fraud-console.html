@@ -183,6 +183,16 @@ body{
 
 /* action buttons */
 .actions{display:flex;gap:8px;flex-wrap:wrap;padding:16px 18px;border-top:1px solid var(--border)}
+.actions.top{border-top:0;padding:14px 18px 4px}
+
+/* detail tabs */
+.dtabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--border);overflow-x:auto}
+.dtab{border:0;background:transparent;color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:500;
+  padding:11px 11px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+.dtab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.dtab:hover{color:var(--text)}
+.dtab:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px}
+.dtab-panel .section:first-child{border-top:0}
 .btn{font-family:inherit;font-size:13px;font-weight:500;padding:9px 15px;border-radius:10px;cursor:pointer;
   border:1px solid var(--border-strong);background:var(--surface);color:var(--text);display:flex;align-items:center;gap:6px}
 .btn:hover{background:var(--surface-2)}
@@ -740,7 +750,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
     if(instant)back(); else setTimeout(back,180);
   }
   function selectCase(id){
-    selected=id; renderQueue(); renderDetail();
+    selected=id; detailTab="summary"; renderQueue(); renderDetail();
     if(isMobile()) openDetailModal();
   }
   (function bindMode(){
@@ -753,6 +763,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   var detail=document.getElementById("detail");
   var CHANNEL="#fraud-alerts";
   var slackOpenedFor=null;
+  var detailTab="summary";
   function esc(s){return String(s).replace(/[&<>]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[m]});}
   function deepLink(id){return location.origin+location.pathname+"?case="+id;}
 
@@ -829,33 +840,21 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
         '<span><b>Slack 알림</b>에서 이 케이스를 열었습니다 · <span class="mono">?case='+c.id+'</span></span>'+
         '<button class="x" id="bannerClose" aria-label="배너 닫기">✕</button></div>' : '';
 
-    var top3=ev.factors.slice(0,3).map(function(x){return '• '+(LABELS[x.code]||x.code)+' (+'+x.score+')';}).join('<br>');
-    var resolved = c.status==='RELEASED' || c.status==='CONFIRMED_FRAUD';
-    var slackHtml=
-      '<div class="section"><h3>Slack 알림 <span class="win">· '+CHANNEL+' · 케이스 등록 시 자동 발송</span></h3>'+
-      '<div class="slackmsg"><div class="bar"></div>'+
-        '<div class="body">'+
-          '<div class="app"><span class="ico">투</span><b>결제 리스크 봇</b><span class="ch">'+CHANNEL+'</span></div>'+
-          '<div class="hd">🚨 어뷰징 의심 케이스 · '+ev.action+'</div>'+
-          '<div class="fields">'+
-            '<div class="fld"><div class="k">회원</div><div class="v">'+esc(c.nick)+' · DONOR '+c.id+'</div></div>'+
-            '<div class="fld"><div class="k">Risk</div><div class="v">'+ev.score+' · '+ev.action+'</div></div>'+
-            '<div class="fld"><div class="k">최근 1h</div><div class="v">카드 '+s.cards+' · 시도 '+s.attempts+'(실패 '+s.fail+')</div></div>'+
-            '<div class="fld"><div class="k">충전</div><div class="v">'+won.format(s.amount)+'원 · IP '+s.ip+'</div></div>'+
-          '</div>'+
-          '<div class="rsn"><b style="color:var(--muted)">탐지 사유</b><br>'+top3+'</div>'+
-          ( resolved ?
-            '<div class="resolvedmark">✓ 처리 완료 · '+c.status+(c.resolvedBy==='slack'?' · Slack에서 처리됨':'')+'</div>' :
-            '<div class="sb">'+
-              '<button class="sbtn p" data-slack="RELEASE">정상 해제</button>'+
-              '<button class="sbtn" data-slack="BLOCK_CARD">결제수단 차단</button>'+
-              '<button class="sbtn d" data-slack="CONFIRM">부정결제 확정</button>'+
-              '<a class="sbtn link" href="'+deepLink(c.id)+'"><span aria-hidden="true">↗</span> 상세 보기</a>'+
-            '</div>' )+
-        '</div>'+
-        '<div class="foot"><span>버튼 콜백은 서명 검증되는 <span class="mono">/slack/interactions</span> 에서 처리</span>'+
-          '<button class="cp" id="copyLink"><span aria-hidden="true">⧉</span> 알림 링크 복사</button></div>'+
-      '</div></div>';
+    var actionsHtml=
+      '<div class="actions top">'+
+        '<button class="btn danger" data-act="CONFIRM"><span aria-hidden="true">⊘</span> 부정결제 확정</button>'+
+        '<button class="btn" data-act="BLOCK_CARD"><span aria-hidden="true">▤</span> 결제수단 차단</button>'+
+        '<button class="btn good" data-act="RELEASE"><span aria-hidden="true">✓</span> 정상 해제</button>'+
+      '</div>';
+
+    var scoreblockHtml=
+      '<div class="scoreblock">'+
+        '<div class="scorerow"><span class="bignum" style="color:'+scaleColor(ev.action)+'">'+ev.score+'</span>'+
+          '<span class="actionlab s-'+ev.action+'">'+ev.action+(ev.hard?' · 즉시차단':'')+'</span></div>'+
+        '<div class="risk-scale"><div class="scale-track"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i></div>'+
+          '<div class="scale-marker" style="left:'+markerLeft+'%"></div>'+
+          '<div class="scale-labels"><span>0</span><span>30</span><span>50</span><span>70</span><span>100+</span></div></div>'+
+      '</div>';
 
     detail.innerHTML=
       bannerHtml+
@@ -865,43 +864,48 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
           '<div class="meta"><span>가입 '+c.joined+'</span><span>본인인증 완료</span><span class="mono">CI ✓</span></div></div>'+
         '<div class="status-chip"><div class="lab">케이스 상태</div><div class="st '+c.status+'">'+c.status+'</div></div>'+
       '</div>'+
-      '<div class="scoreblock">'+
-        '<div class="scorerow"><span class="bignum" style="color:'+scaleColor(ev.action)+'">'+ev.score+'</span>'+
-          '<span class="actionlab s-'+ev.action+'">'+ev.action+(ev.hard?' · 즉시차단':'')+'</span></div>'+
-        '<div class="risk-scale"><div class="scale-track"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i></div>'+
-          '<div class="scale-marker" style="left:'+markerLeft+'%"></div>'+
-          '<div class="scale-labels"><span>0</span><span>30</span><span>50</span><span>70</span><span>100+</span></div></div>'+
+      '<div class="dtabs" role="tablist" aria-label="상세 탭">'+
+        '<button class="dtab" role="tab" type="button" data-dtab="summary">요약</button>'+
+        '<button class="dtab" role="tab" type="button" data-dtab="cards">결제수단관계</button>'+
+        '<button class="dtab" role="tab" type="button" data-dtab="factors">탐지 사유</button>'+
+        '<button class="dtab" role="tab" type="button" data-dtab="events">처리 이력</button>'+
       '</div>'+
-      '<div class="section"><h3>최근 행동 <span class="win">· 슬라이딩 윈도우 1h</span></h3>'+
-        '<div class="statgrid">'+statHtml+'</div></div>'+
-      '<div class="section"><h3>결제수단 관계 <span class="win">· PAYMENT_INSTRUMENT ↔ USER</span></h3>'+
-        '<div class="cardrel">'+cardHtml+'</div></div>'+
-      '<div class="section"><h3>탐지 사유 <span class="win">· factors</span></h3>'+
-        '<div class="factorlist">'+factorHtml+'</div></div>'+
-      slackHtml+
-      '<div class="section"><h3>처리 이력 <span class="win">· FRAUD_CASE_EVENT</span></h3>'+
-        '<div class="timeline">'+evHtml+'</div></div>'+
-      '<div class="actions">'+
-        '<button class="btn danger" data-act="CONFIRM"><span aria-hidden="true">⊘</span> 부정결제 확정</button>'+
-        '<button class="btn" data-act="BLOCK_CARD"><span aria-hidden="true">▤</span> 결제수단 차단</button>'+
-        '<button class="btn good" data-act="RELEASE"><span aria-hidden="true">✓</span> 정상 해제</button>'+
+      '<div class="dtab-panel" data-dpanel="summary" role="tabpanel">'+
+        actionsHtml+
+        scoreblockHtml+
+        '<div class="section"><h3>최근 행동 <span class="win">· 슬라이딩 윈도우 1h</span></h3>'+
+          '<div class="statgrid">'+statHtml+'</div></div>'+
+      '</div>'+
+      '<div class="dtab-panel" data-dpanel="cards" role="tabpanel" hidden>'+
+        '<div class="section"><h3>결제수단 관계 <span class="win">· PAYMENT_INSTRUMENT ↔ USER</span></h3>'+
+          '<div class="cardrel">'+cardHtml+'</div></div>'+
+      '</div>'+
+      '<div class="dtab-panel" data-dpanel="factors" role="tabpanel" hidden>'+
+        '<div class="section"><h3>탐지 사유 <span class="win">· factors</span></h3>'+
+          '<div class="factorlist">'+factorHtml+'</div></div>'+
+      '</div>'+
+      '<div class="dtab-panel" data-dpanel="events" role="tabpanel" hidden>'+
+        '<div class="section"><h3>처리 이력 <span class="win">· FRAUD_CASE_EVENT</span></h3>'+
+          '<div class="timeline">'+evHtml+'</div></div>'+
       '</div>';
+
+    function setDtab(key){
+      detailTab=key;
+      Array.prototype.forEach.call(detail.querySelectorAll("[data-dtab]"),function(t){
+        t.setAttribute("aria-selected",t.getAttribute("data-dtab")===key?"true":"false");});
+      Array.prototype.forEach.call(detail.querySelectorAll("[data-dpanel]"),function(p){
+        p.hidden=p.getAttribute("data-dpanel")!==key;});
+    }
+    Array.prototype.forEach.call(detail.querySelectorAll("[data-dtab]"),function(t){
+      t.addEventListener("click",function(){setDtab(t.getAttribute("data-dtab"));});
+    });
+    setDtab(detailTab);
 
     Array.prototype.forEach.call(detail.querySelectorAll("[data-act]"),function(btn){
       btn.addEventListener("click",function(){applyAction(c,btn.getAttribute("data-act"),"console");});
     });
-    Array.prototype.forEach.call(detail.querySelectorAll("[data-slack]"),function(btn){
-      btn.addEventListener("click",function(){applyAction(c,btn.getAttribute("data-slack"),"slack");});
-    });
     var bc=detail.querySelector("#bannerClose");
     if(bc)bc.addEventListener("click",function(){slackOpenedFor=null;renderDetail();});
-    var cp=detail.querySelector("#copyLink");
-    if(cp)cp.addEventListener("click",function(){
-      var url=deepLink(c.id);
-      var done=function(){showToast("알림 링크를 복사했습니다 · "+url);};
-      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done,done);}
-      else{done();}
-    });
   }
 
   /* ---- tabs ---- */
