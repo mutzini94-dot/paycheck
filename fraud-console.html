@@ -81,9 +81,10 @@ body{
 
 /* queue */
 .queue{display:flex;flex-direction:column}
-.qitem{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;
-  padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;
-  background:transparent;border-left:3px solid transparent;font-family:inherit;color:inherit;width:100%}
+.qitem{display:flex;flex-direction:column;gap:9px;
+  padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;
+  background:transparent;border-left:3px solid transparent;width:100%}
+.qmain{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
 .qitem:last-child{border-bottom:0}
 .qitem:hover{background:var(--surface-2)}
 .qitem[aria-current="true"]{background:var(--accent-soft);border-left-color:var(--accent)}
@@ -99,9 +100,9 @@ body{
 .t-HOLD{background:var(--hold-bg);color:var(--hold)} .s-HOLD{background:var(--hold-bg);color:var(--hold)}
 .t-VERIFY{background:var(--verify-bg);color:var(--verify)} .s-VERIFY{background:var(--verify-bg);color:var(--verify)}
 .t-ALLOW{background:var(--ok-bg);color:var(--ok)} .s-ALLOW{background:var(--ok-bg);color:var(--ok)}
-.qslack{margin-top:3px;font-family:inherit;font-size:10.5px;font-weight:600;color:var(--accent);
-  background:var(--accent-soft);border:1px solid var(--accent);border-radius:7px;padding:3px 8px;cursor:pointer;
-  display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.qslack{align-self:flex-end;font-family:inherit;font-size:11px;font-weight:600;color:var(--accent);
+  background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:5px 11px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .qslack:hover{background:var(--accent);color:var(--on-accent)}
 .qslack:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
@@ -257,6 +258,24 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 .codebox .k{color:var(--accent)} .codebox .b{color:var(--block)} .codebox .g{color:var(--ok)}
 .foot{margin-top:24px;font-size:11.5px;color:var(--dim);text-align:center;line-height:1.7}
 .foot code{font-family:"IBM Plex Mono",monospace;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+/* whitelist */
+.wl{max-width:640px}
+.wl-desc{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.7}
+.wl-form{display:flex;gap:9px}
+.wl-form input{flex:1;min-width:0;font-family:inherit;font-size:14px;padding:0 13px;height:40px;
+  border-radius:10px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text)}
+.wl-form input::placeholder{color:var(--dim)}
+.wl-form input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.wl-form .btn{white-space:nowrap}
+.wl-error{margin-top:10px;font-size:12.5px;color:var(--block);font-weight:500}
+.wl-list{display:flex;flex-direction:column;gap:8px}
+.wl-row{display:flex;align-items:center;gap:11px;background:var(--surface-2);border-radius:10px;padding:11px 13px}
+.wl-row .wid{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600}
+.wl-row .wnick{font-size:12.5px;color:var(--muted)}
+.wl-row .rm{margin-left:auto;font-family:inherit;font-size:12px;font-weight:500;color:var(--block);
+  background:var(--block-bg);border:1px solid var(--block);border-radius:8px;padding:5px 11px;cursor:pointer}
+.wl-row .rm:hover{background:var(--block);color:#fff}
+.wl-empty,.queue-empty{font-size:13px;color:var(--dim);padding:18px 16px;line-height:1.6}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 /* tablet */
@@ -321,6 +340,8 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
       <span aria-hidden="true">▤</span> 탐지 대시보드</button>
     <button class="tab" role="tab" aria-selected="false" id="tab-sim" aria-controls="view-sim">
       <span aria-hidden="true">◈</span> Risk 시뮬레이터</button>
+    <button class="tab" role="tab" aria-selected="false" id="tab-wl" aria-controls="view-wl">
+      <span aria-hidden="true">◱</span> 화이트리스트</button>
   </div>
 
   <!-- ============ DASHBOARD ============ -->
@@ -394,6 +415,26 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
           <div class="factorlist" id="simFactors"></div>
         </div>
         <div class="codebox" id="simCode"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ WHITELIST ============ -->
+  <div id="view-wl" role="tabpanel" aria-labelledby="tab-wl" hidden>
+    <div class="wl">
+      <div class="panel">
+        <div class="panel-h"><h2>화이트리스트 · 탐지 제외</h2><span class="count" id="wlListCount"></span></div>
+        <div class="section" style="border-top:0">
+          <p class="wl-desc">등록한 도네이터는 어뷰징 탐지 큐에서 <b>제외</b>됩니다. 가족카드·법인 결제·신뢰된 헤비 도네이터 등 <b>오탐 방지</b>용으로 사용하세요. 목록은 이 브라우저에 저장됩니다.</p>
+          <form id="wlForm" class="wl-form" autocomplete="off">
+            <input id="wlInput" inputmode="numeric" placeholder="도네이터 ID 입력 (예: 1000123)" aria-label="도네이터 ID">
+            <button class="btn good" type="submit"><span aria-hidden="true">＋</span> 등록</button>
+          </form>
+          <div id="wlError" class="wl-error" role="alert" hidden></div>
+        </div>
+        <div class="section"><h3>제외 중인 도네이터</h3>
+          <div id="wlList" class="wl-list"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -512,17 +553,28 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   }
   function scaleColor(action){return"var(--"+({BLOCK:"block",HOLD:"hold",VERIFY:"verify",ALLOW:"ok"}[action])+")";}
 
+  /* ---- whitelist (탐지 제외 도네이터) ---- */
+  function loadWL(){try{var r=localStorage.getItem("frc-whitelist");if(r)return new Set(JSON.parse(r));}catch(e){}return new Set();}
+  function saveWL(){try{localStorage.setItem("frc-whitelist",JSON.stringify(Array.from(wl)));}catch(e){}}
+  var wl=loadWL();
+  function visibleCases(){return CASES.filter(function(c){return !wl.has(c.id);});}
+
   /* ---- queue ---- */
   var selected=CASES[0].id;
   var queue=document.getElementById("queue");
-  document.getElementById("qcount").textContent=CASES.length+"건";
 
   function reasonSummary(ev){var e=evaluate(ev.features);
     return e.factors.slice(0,3).map(function(x){return LABELS[x.code]}).join(" · ");}
 
   function renderQueue(){
     queue.innerHTML="";
-    CASES.forEach(function(c){
+    var vis=visibleCases();
+    document.getElementById("qcount").textContent=vis.length+"건"+(wl.size?" · "+wl.size+"명 제외":"");
+    if(!vis.length){
+      queue.innerHTML='<div class="queue-empty">탐지 대상이 없습니다 · 모든 케이스가 화이트리스트로 제외됨</div>';
+      return;
+    }
+    vis.forEach(function(c){
       var ev=evaluate(c.features);
       var col=avatarColor(c.id);
       var b=document.createElement("div");
@@ -530,16 +582,17 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
       b.setAttribute("aria-current",c.id===selected?"true":"false");
       b.setAttribute("aria-selected",c.id===selected?"true":"false");
       b.innerHTML=
-        '<span class="avatar" style="background:'+col.b+';color:'+col.c+'">'+c.nick.charAt(0)+'</span>'+
-        '<span class="qmeta"><span class="nm">'+c.nick+'</span>'+
-          '<span class="id mono">DONOR '+c.id+'</span>'+
-          '<span class="rz">'+reasonSummary(c)+'</span></span>'+
-        '<span class="qright">'+
-          '<span class="score-pill s-'+ev.action+'">'+ev.score+'</span>'+
-          '<span class="tag t-'+ev.action+'">'+ev.action+'</span>'+
-          '<button class="qslack" type="button" data-slack-send="'+c.id+'" '+
-            'aria-label="DONOR '+c.id+' Slack 발송"><span aria-hidden="true">↗</span> Slack 발송</button>'+
-        '</span>';
+        '<div class="qmain">'+
+          '<span class="avatar" style="background:'+col.b+';color:'+col.c+'">'+c.nick.charAt(0)+'</span>'+
+          '<span class="qmeta"><span class="nm">'+c.nick+'</span>'+
+            '<span class="id mono">DONOR '+c.id+'</span>'+
+            '<span class="rz">'+reasonSummary(c)+'</span></span>'+
+          '<span class="qright">'+
+            '<span class="score-pill s-'+ev.action+'">'+ev.score+'</span>'+
+            '<span class="tag t-'+ev.action+'">'+ev.action+'</span></span>'+
+        '</div>'+
+        '<button class="qslack" type="button" data-slack-send="'+c.id+'" '+
+          'aria-label="DONOR '+c.id+' Slack 발송"><span aria-hidden="true">↗</span> Slack 발송</button>';
       var select=function(){selected=c.id;renderQueue();renderDetail();};
       b.addEventListener("click",select);
       b.addEventListener("keydown",function(e){
@@ -635,6 +688,14 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   }
 
   function renderDetail(){
+    var vis=visibleCases();
+    if(!vis.some(function(x){return x.id===selected;})) selected = vis.length ? vis[0].id : null;
+    if(selected===null){
+      detail.innerHTML='<div class="dhead" style="padding:28px 18px">'+
+        '<div class="who"><div class="nm">탐지 대상 없음</div>'+
+        '<div class="meta"><span>모든 케이스가 화이트리스트로 제외되었습니다.</span></div></div></div>';
+      return;
+    }
     var c=CASES.filter(function(x){return x.id===selected})[0];
     var ev=evaluate(c.features);
     var col=avatarColor(c.id);
@@ -752,15 +813,48 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   }
 
   /* ---- tabs ---- */
-  var tabBoard=document.getElementById("tab-board"),tabSim=document.getElementById("tab-sim");
-  var vBoard=document.getElementById("view-board"),vSim=document.getElementById("view-sim");
-  function selTab(which){
-    var board=which==="board";
-    tabBoard.setAttribute("aria-selected",board);tabSim.setAttribute("aria-selected",!board);
-    vBoard.hidden=!board;vSim.hidden=board;
+  var TABS=[
+    {k:"board",t:document.getElementById("tab-board"),v:document.getElementById("view-board")},
+    {k:"sim",t:document.getElementById("tab-sim"),v:document.getElementById("view-sim")},
+    {k:"wl",t:document.getElementById("tab-wl"),v:document.getElementById("view-wl")}
+  ];
+  function selTab(k){TABS.forEach(function(x){var on=x.k===k;x.t.setAttribute("aria-selected",on?"true":"false");x.v.hidden=!on;});}
+  TABS.forEach(function(x){x.t.addEventListener("click",function(){selTab(x.k);});});
+
+  /* ---- whitelist view ---- */
+  var wlForm=document.getElementById("wlForm"),wlInput=document.getElementById("wlInput"),wlErr=document.getElementById("wlError");
+  function renderWhitelist(){
+    var arr=Array.from(wl).sort(function(a,b){return a-b;});
+    document.getElementById("wlListCount").textContent=arr.length?arr.length+"명":"";
+    var el=document.getElementById("wlList");
+    if(!arr.length){el.innerHTML='<div class="wl-empty">등록된 도네이터가 없습니다. ID를 등록하면 탐지 큐에서 제외됩니다.</div>';return;}
+    el.innerHTML=arr.map(function(id){
+      var c=CASES.filter(function(x){return x.id===id;})[0];
+      return '<div class="wl-row"><span class="wid mono">DONOR '+id+'</span>'+
+        '<span class="wnick">'+(c?esc(c.nick)+" · 탐지 큐에서 제외됨":"등록된 케이스 없음")+'</span>'+
+        '<button class="rm" type="button" data-rm="'+id+'">제외 해제</button></div>';
+    }).join("");
+    Array.prototype.forEach.call(el.querySelectorAll("[data-rm]"),function(btn){
+      btn.addEventListener("click",function(){
+        var id=parseInt(btn.getAttribute("data-rm"),10);
+        wl["delete"](id);saveWL();afterWLChange();
+        showToast("DONOR "+id+" 를 화이트리스트에서 제거했습니다");
+      });
+    });
   }
-  tabBoard.addEventListener("click",function(){selTab("board")});
-  tabSim.addEventListener("click",function(){selTab("sim")});
+  function afterWLChange(){renderQueue();renderDetail();renderWhitelist();}
+  function wlError(m){wlErr.textContent=m;wlErr.hidden=false;}
+  wlInput.addEventListener("input",function(){wlErr.hidden=true;});
+  wlForm.addEventListener("submit",function(e){
+    e.preventDefault();
+    var raw=(wlInput.value||"").trim();
+    if(!/^[0-9]+$/.test(raw)){wlError("숫자로 된 도네이터 ID를 입력하세요.");return;}
+    var id=parseInt(raw,10);
+    if(wl.has(id)){wlError("이미 등록된 도네이터 ID입니다.");return;}
+    wl.add(id);saveWL();wlInput.value="";wlErr.hidden=true;
+    afterWLChange();
+    showToast("DONOR "+id+" 를 화이트리스트에 등록했습니다 · 탐지 제외");
+  });
 
   /* ---- simulator ---- */
   var S={cards:"s_cards",fail:"s_fail",attempt:"s_attempt",cardacct:"s_cardacct",devacct:"s_devacct",amount:"s_amount"};
@@ -828,7 +922,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
     }catch(e){}
   })();
 
-  renderQueue();renderDetail();renderSim();
+  renderQueue();renderDetail();renderSim();renderWhitelist();
   if(slackOpenedFor){setTimeout(function(){showToast("Slack 알림에서 케이스 DONOR "+slackOpenedFor+" 를 열었습니다");},400);}
 })();
 </script>
