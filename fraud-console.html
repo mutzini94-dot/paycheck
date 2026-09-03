@@ -99,6 +99,11 @@ body{
 .t-HOLD{background:var(--hold-bg);color:var(--hold)} .s-HOLD{background:var(--hold-bg);color:var(--hold)}
 .t-VERIFY{background:var(--verify-bg);color:var(--verify)} .s-VERIFY{background:var(--verify-bg);color:var(--verify)}
 .t-ALLOW{background:var(--ok-bg);color:var(--ok)} .s-ALLOW{background:var(--ok-bg);color:var(--ok)}
+.qslack{margin-top:3px;font-family:inherit;font-size:10.5px;font-weight:600;color:var(--accent);
+  background:var(--accent-soft);border:1px solid var(--accent);border-radius:7px;padding:3px 8px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.qslack:hover{background:var(--accent);color:var(--on-accent)}
+.qslack:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* detail */
 .detail{display:flex;flex-direction:column;gap:16px}
@@ -184,6 +189,44 @@ body{
 .btn.danger:hover{filter:brightness(1.06)}
 .btn.good{background:var(--ok);border-color:var(--ok);color:#fff}
 .btn.good:hover{filter:brightness(1.06)}
+
+/* slack + deeplink + toast */
+.deeplink-banner{display:flex;align-items:center;gap:10px;margin:16px 18px 0;padding:11px 14px;
+  background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;font-size:12.5px;color:var(--text)}
+.deeplink-banner b{color:var(--accent)}
+.deeplink-banner .x{margin-left:auto;background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
+.slackmsg{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.slackmsg .bar{height:3px;background:#611f69}
+.slackmsg .body{padding:12px 14px;border-left:3px solid var(--accent);margin:11px 12px 4px;background:var(--surface);border-radius:8px}
+.slackmsg .app{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:9px}
+.slackmsg .app .ico{width:20px;height:20px;border-radius:5px;background:var(--accent);color:var(--on-accent);
+  display:grid;place-items:center;font-size:11px;font-weight:700}
+.slackmsg .app b{color:var(--text);font-weight:600}
+.slackmsg .app .ch{color:var(--dim)}
+.slackmsg .hd{font-weight:600;font-size:13.5px;margin-bottom:10px}
+.slackmsg .fields{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px;margin-bottom:11px}
+.slackmsg .fld .k{font-size:11px;color:var(--muted)}
+.slackmsg .fld .v{font-size:12.5px;font-weight:500;margin-top:1px}
+.slackmsg .rsn{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px}
+.slackmsg .sb{display:flex;gap:7px;flex-wrap:wrap}
+.sbtn{font-family:inherit;font-size:12.5px;font-weight:500;padding:7px 12px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;gap:5px;text-decoration:none}
+.sbtn:hover{background:var(--surface-2)}
+.sbtn.p{background:var(--ok);border-color:var(--ok);color:#fff}
+.sbtn.d{background:var(--block);border-color:var(--block);color:#fff}
+.sbtn.p:hover{filter:brightness(1.06);background:var(--ok)}
+.sbtn.d:hover{filter:brightness(1.06);background:var(--block)}
+.sbtn.link{background:transparent;border-color:var(--accent);color:var(--accent)}
+.sbtn.link:hover{background:var(--accent-soft)}
+.slackmsg .foot{display:flex;align-items:center;gap:8px;padding:2px 14px 13px;font-size:11px;color:var(--dim);flex-wrap:wrap}
+.slackmsg .foot .cp{margin-left:auto;background:var(--surface);border:1px solid var(--border-strong);color:var(--muted);
+  font-family:inherit;font-size:11px;padding:5px 9px;border-radius:7px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.slackmsg .foot .cp:hover{color:var(--text)}
+.resolvedmark{font-size:12px;color:var(--ok);font-weight:600}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(10px);z-index:60;
+  background:var(--text);color:var(--bg);font-size:12.5px;font-weight:500;padding:11px 16px;border-radius:10px;
+  box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:88vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* simulator */
 .sim{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
@@ -482,8 +525,8 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
     CASES.forEach(function(c){
       var ev=evaluate(c.features);
       var col=avatarColor(c.id);
-      var b=document.createElement("button");
-      b.className="qitem";b.setAttribute("role","option");
+      var b=document.createElement("div");
+      b.className="qitem";b.setAttribute("role","option");b.tabIndex=0;
       b.setAttribute("aria-current",c.id===selected?"true":"false");
       b.setAttribute("aria-selected",c.id===selected?"true":"false");
       b.innerHTML=
@@ -493,15 +536,103 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
           '<span class="rz">'+reasonSummary(c)+'</span></span>'+
         '<span class="qright">'+
           '<span class="score-pill s-'+ev.action+'">'+ev.score+'</span>'+
-          '<span class="tag t-'+ev.action+'">'+ev.action+'</span></span>';
-      b.addEventListener("click",function(){selected=c.id;renderQueue();renderDetail();});
+          '<span class="tag t-'+ev.action+'">'+ev.action+'</span>'+
+          '<button class="qslack" type="button" data-slack-send="'+c.id+'" '+
+            'aria-label="DONOR '+c.id+' Slack 발송"><span aria-hidden="true">↗</span> Slack 발송</button>'+
+        '</span>';
+      var select=function(){selected=c.id;renderQueue();renderDetail();};
+      b.addEventListener("click",select);
+      b.addEventListener("keydown",function(e){
+        if(e.key==="Enter"||e.key===" "){e.preventDefault();select();}
+      });
+      b.querySelector("[data-slack-send]").addEventListener("click",function(e){
+        e.stopPropagation();openSlackWindow(c);
+      });
       queue.appendChild(b);
     });
   }
 
+  /* ---- Slack 발송 팝업 (새 창) ---- */
+  function openSlackWindow(c){
+    var ev=evaluate(c.features), s=c.stats, dl=deepLink(c.id);
+    var top3=ev.factors.slice(0,3).map(function(x){return '• '+(LABELS[x.code]||x.code)+' (+'+x.score+')';}).join('<br>');
+    var html=
+      '<!doctype html><html lang="ko"><head><meta charset="utf-8">'+
+      '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<title>Slack 발송 · DONOR '+c.id+'</title><style>'+
+      'body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;background:#f4f5f7;color:#1d1c1d;padding:16px}'+
+      '.note{font-size:12px;color:#616061;margin:0 2px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
+      '.card{background:#fff;border:1px solid #e2e2e3;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}'+
+      '.bar{height:4px;background:#611f69}.body{padding:14px 16px;border-left:4px solid #4d5dd6;margin:12px}'+
+      '.app{display:flex;align-items:center;gap:8px;font-size:12px;color:#616061;margin-bottom:10px}'+
+      '.ico{width:22px;height:22px;border-radius:5px;background:#4d5dd6;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}'+
+      '.app b{color:#1d1c1d}.hd{font-weight:700;font-size:15px;margin-bottom:12px}'+
+      '.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-bottom:12px}'+
+      '.k{font-size:11px;color:#616061}.v{font-size:13px;font-weight:600;margin-top:2px}'+
+      '.rsn{font-size:12px;color:#454545;line-height:1.7;margin-bottom:14px}'+
+      '.sb{display:flex;gap:8px;flex-wrap:wrap}'+
+      '.b{font:inherit;font-size:13px;font-weight:600;padding:8px 13px;border-radius:7px;border:1px solid #c9c9c9;background:#fff;color:#1d1c1d;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px}'+
+      '.b.p{background:#1f9d63;border-color:#1f9d63;color:#fff}.b.d{background:#d43a56;border-color:#d43a56;color:#fff}.b.l{border-color:#4d5dd6;color:#4d5dd6}'+
+      '.foot{font-size:11px;color:#8a8a8a;margin:12px 4px 0;line-height:1.6}</style></head><body>'+
+      '<div class="note">🚀 이 내용이 <b style="margin:0 3px">'+CHANNEL+'</b> 채널로 발송됩니다 <span style="color:#8a8a8a">(미리보기)</span></div>'+
+      '<div class="card"><div class="bar"></div><div class="body">'+
+      '<div class="app"><span class="ico">투</span><b>결제 리스크 봇</b><span>'+CHANNEL+'</span></div>'+
+      '<div class="hd">🚨 어뷰징 의심 케이스 · '+ev.action+'</div>'+
+      '<div class="fields">'+
+        '<div><div class="k">회원</div><div class="v">'+esc(c.nick)+' · DONOR '+c.id+'</div></div>'+
+        '<div><div class="k">Risk</div><div class="v">'+ev.score+' · '+ev.action+'</div></div>'+
+        '<div><div class="k">최근 1h</div><div class="v">카드 '+s.cards+' · 시도 '+s.attempts+'(실패 '+s.fail+')</div></div>'+
+        '<div><div class="k">충전</div><div class="v">'+won.format(s.amount)+'원 · IP '+s.ip+'</div></div>'+
+      '</div>'+
+      '<div class="rsn"><b>탐지 사유</b><br>'+top3+'</div>'+
+      '<div class="sb">'+
+        '<button class="b p" onclick="act(\'RELEASE\')">정상 해제</button>'+
+        '<button class="b" onclick="act(\'BLOCK_CARD\')">결제수단 차단</button>'+
+        '<button class="b d" onclick="act(\'CONFIRM\')">부정결제 확정</button>'+
+        '<a class="b l" href="'+dl+'" target="_blank" rel="noopener">↗ 콘솔에서 상세</a>'+
+      '</div></div></div>'+
+      '<div class="foot">버튼 콜백은 서명 검증되는 <code>/slack/interactions</code> 에서 처리됩니다. 처리하면 콘솔에 반영되고 이 창은 닫힙니다.</div>'+
+      '<script>function act(a){try{if(window.opener&&window.opener.__fraudApply){window.opener.__fraudApply('+c.id+',a);window.close();}else{location.href='+JSON.stringify(dl)+';}}catch(e){location.href='+JSON.stringify(dl)+';}}<\/script>'+
+      '</body></html>';
+    var w=window.open("","fraudslack_"+c.id,"width=540,height=680,menubar=no,toolbar=no,location=no");
+    if(!w){
+      showToast("팝업이 차단되어 새 탭으로 엽니다");
+      window.open(dl,"_blank","noopener");
+      return;
+    }
+    w.document.open();w.document.write(html);w.document.close();
+    showToast("Slack 발송 내용을 새 창으로 열었습니다 · "+CHANNEL);
+  }
+
   /* ---- detail ---- */
   var detail=document.getElementById("detail");
+  var CHANNEL="#fraud-alerts";
+  var slackOpenedFor=null;
   function esc(s){return String(s).replace(/[&<>]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[m]});}
+  function deepLink(id){return location.origin+location.pathname+"?case="+id;}
+
+  var toastEl=document.createElement("div");
+  toastEl.className="toast";toastEl.setAttribute("role","status");document.body.appendChild(toastEl);
+  var toastT=null;
+  function showToast(msg){
+    toastEl.textContent=msg;toastEl.classList.add("show");
+    if(toastT)clearTimeout(toastT);
+    toastT=setTimeout(function(){toastEl.classList.remove("show");},2800);
+  }
+
+  var ACTMAP={
+    CONFIRM:{txt:"부정결제로 확정 처리",dot:"block",t:"부정결제로 확정했습니다",st:function(){return"CONFIRMED_FRAUD";}},
+    BLOCK_CARD:{txt:"결제수단 상태를 BLOCKED로 변경",dot:"block",t:"결제수단을 차단했습니다",st:function(cur){return cur==="NORMAL"?"SUSPECTED":cur;}},
+    RELEASE:{txt:"정상 사용자로 판정 · 케이스 해제",dot:"ok",t:"정상 해제했습니다",st:function(){return"RELEASED";}}
+  };
+  function applyAction(c,act,source){
+    var m=ACTMAP[act];if(!m)return;
+    c.status=m.st(c.status);c.resolvedBy=source;
+    c.events.unshift({t:act,time:"방금",txt:m.txt+(source==="slack"?" · Slack에서 처리":""),dot:m.dot,
+      actor:source==="slack"?"운영자 (Slack)":"운영자"});
+    renderQueue();renderDetail();
+    showToast((source==="slack"?"Slack · ":"")+m.t+" — 스레드에 반영됨");
+  }
 
   function renderDetail(){
     var c=CASES.filter(function(x){return x.id===selected})[0];
@@ -540,7 +671,41 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
         '<div class="etime">'+esc(e.time)+' · <span class="actor">'+esc(e.actor)+'</span></div></div></div>';
     }).join("");
 
+    var bannerHtml = (slackOpenedFor===c.id) ?
+      '<div class="deeplink-banner"><span aria-hidden="true">🔗</span>'+
+        '<span><b>Slack 알림</b>에서 이 케이스를 열었습니다 · <span class="mono">?case='+c.id+'</span></span>'+
+        '<button class="x" id="bannerClose" aria-label="배너 닫기">✕</button></div>' : '';
+
+    var top3=ev.factors.slice(0,3).map(function(x){return '• '+(LABELS[x.code]||x.code)+' (+'+x.score+')';}).join('<br>');
+    var resolved = c.status==='RELEASED' || c.status==='CONFIRMED_FRAUD';
+    var slackHtml=
+      '<div class="section"><h3>Slack 알림 <span class="win">· '+CHANNEL+' · 케이스 등록 시 자동 발송</span></h3>'+
+      '<div class="slackmsg"><div class="bar"></div>'+
+        '<div class="body">'+
+          '<div class="app"><span class="ico">투</span><b>결제 리스크 봇</b><span class="ch">'+CHANNEL+'</span></div>'+
+          '<div class="hd">🚨 어뷰징 의심 케이스 · '+ev.action+'</div>'+
+          '<div class="fields">'+
+            '<div class="fld"><div class="k">회원</div><div class="v">'+esc(c.nick)+' · DONOR '+c.id+'</div></div>'+
+            '<div class="fld"><div class="k">Risk</div><div class="v">'+ev.score+' · '+ev.action+'</div></div>'+
+            '<div class="fld"><div class="k">최근 1h</div><div class="v">카드 '+s.cards+' · 시도 '+s.attempts+'(실패 '+s.fail+')</div></div>'+
+            '<div class="fld"><div class="k">충전</div><div class="v">'+won.format(s.amount)+'원 · IP '+s.ip+'</div></div>'+
+          '</div>'+
+          '<div class="rsn"><b style="color:var(--muted)">탐지 사유</b><br>'+top3+'</div>'+
+          ( resolved ?
+            '<div class="resolvedmark">✓ 처리 완료 · '+c.status+(c.resolvedBy==='slack'?' · Slack에서 처리됨':'')+'</div>' :
+            '<div class="sb">'+
+              '<button class="sbtn p" data-slack="RELEASE">정상 해제</button>'+
+              '<button class="sbtn" data-slack="BLOCK_CARD">결제수단 차단</button>'+
+              '<button class="sbtn d" data-slack="CONFIRM">부정결제 확정</button>'+
+              '<a class="sbtn link" href="'+deepLink(c.id)+'"><span aria-hidden="true">↗</span> 상세 보기</a>'+
+            '</div>' )+
+        '</div>'+
+        '<div class="foot"><span>버튼 콜백은 서명 검증되는 <span class="mono">/slack/interactions</span> 에서 처리</span>'+
+          '<button class="cp" id="copyLink"><span aria-hidden="true">⧉</span> 알림 링크 복사</button></div>'+
+      '</div></div>';
+
     detail.innerHTML=
+      bannerHtml+
       '<div class="dhead">'+
         '<span class="avatar" style="background:'+col.b+';color:'+col.c+'">'+c.nick.charAt(0)+'</span>'+
         '<div class="who"><div class="nm">'+c.nick+'</div><div class="id mono">DONOR '+c.id+'</div>'+
@@ -560,6 +725,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
         '<div class="cardrel">'+cardHtml+'</div></div>'+
       '<div class="section"><h3>탐지 사유 <span class="win">· factors</span></h3>'+
         '<div class="factorlist">'+factorHtml+'</div></div>'+
+      slackHtml+
       '<div class="section"><h3>처리 이력 <span class="win">· FRAUD_CASE_EVENT</span></h3>'+
         '<div class="timeline">'+evHtml+'</div></div>'+
       '<div class="actions">'+
@@ -569,16 +735,19 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
       '</div>';
 
     Array.prototype.forEach.call(detail.querySelectorAll("[data-act]"),function(btn){
-      btn.addEventListener("click",function(){
-        var act=btn.getAttribute("data-act");
-        var map={CONFIRM:{st:"CONFIRMED_FRAUD",txt:"부정결제로 확정 처리",dot:"block"},
-                 BLOCK_CARD:{st:c.status,txt:"결제수단 상태를 BLOCKED로 변경",dot:"block"},
-                 RELEASE:{st:"RELEASED",txt:"정상 사용자로 판정 · 케이스 해제",dot:"ok"}};
-        var m=map[act];
-        c.status=m.st;
-        c.events.unshift({t:act,time:"방금",txt:m.txt,dot:m.dot,actor:"운영자"});
-        renderDetail();
-      });
+      btn.addEventListener("click",function(){applyAction(c,btn.getAttribute("data-act"),"console");});
+    });
+    Array.prototype.forEach.call(detail.querySelectorAll("[data-slack]"),function(btn){
+      btn.addEventListener("click",function(){applyAction(c,btn.getAttribute("data-slack"),"slack");});
+    });
+    var bc=detail.querySelector("#bannerClose");
+    if(bc)bc.addEventListener("click",function(){slackOpenedFor=null;renderDetail();});
+    var cp=detail.querySelector("#copyLink");
+    if(cp)cp.addEventListener("click",function(){
+      var url=deepLink(c.id);
+      var done=function(){showToast("알림 링크를 복사했습니다 · "+url);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done,done);}
+      else{done();}
     });
   }
 
@@ -645,6 +814,21 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   [newcard,newacct].forEach(function(t){t.addEventListener("click",function(){
     t.setAttribute("aria-pressed",t.getAttribute("aria-pressed")==="true"?"false":"true");renderSim();});});
 
+  window.__fraudApply=function(id,act){
+    var cc=CASES.filter(function(x){return x.id===id;})[0];
+    if(!cc)return;
+    selected=id;applyAction(cc,act,"slack");
+  };
+
+  (function initDeepLink(){
+    try{
+      var q=new URLSearchParams(location.search);
+      var cid=parseInt(q.get("case"),10);
+      if(cid&&CASES.some(function(c){return c.id===cid})){selected=cid;slackOpenedFor=cid;}
+    }catch(e){}
+  })();
+
   renderQueue();renderDetail();renderSim();
+  if(slackOpenedFor){setTimeout(function(){showToast("Slack 알림에서 케이스 DONOR "+slackOpenedFor+" 를 열었습니다");},400);}
 })();
 </script>

@@ -516,7 +516,169 @@ fun onPgApproved(attemptId: Long, pg: PgPaymentResult) {
 
 ---
 
-## 9. 운영 · 튜닝 체크리스트
+## 9. Slack 알림 · 원클릭 처리
+
+의심 케이스가 큐에 등록되는 순간(`FRAUD_CASE` OPEN) 담당 채널로 Slack 메시지를 보내고,
+관리자가 **Slack 메시지의 버튼만으로 바로 처리**(정상 해제 / 결제수단 차단 / 부정결제 확정)할 수 있게 한다.
+버튼 콜백은 **서명 검증되는 서버 엔드포인트**로 들어오므로, 정적 페이지가 아니라 백엔드(§6)가 처리한다.
+
+```mermaid
+flowchart TD
+    OPEN[FRAUD_CASE OPEN<br/>Risk HOLD/BLOCK] --> N[SlackNotifier]
+    N -->|chat.postMessage / Webhook| CH[#fraud-alerts 채널]
+    CH --> A{관리자}
+    A -->|버튼 클릭| IX[Interactivity Request URL<br/>POST /slack/interactions]
+    A -->|상세 보기| DL[콘솔 딥링크<br/>/paycheck/?case=ID]
+    IX --> V[서명 검증<br/>X-Slack-Signature]
+    V --> APP[FraudCaseService<br/>release/blockCard/confirm]
+    APP --> DB[(FRAUD_CASE<br/>FRAUD_CASE_EVENT)]
+    APP -->|메시지 갱신| CH
+```
+
+### 9-1. 케이스 등록 시 발송하는 메시지 (Block Kit)
+
+`actions` 블록의 각 버튼 `value`에 `caseId`와 처리 유형을 담고, "상세 보기"는 콘솔 딥링크로 연결한다.
+
+```json
+{
+  "channel": "#fraud-alerts",
+  "text": "🚨 어뷰징 의심 케이스 · DONOR 1000123 · Risk 160 (BLOCK)",
+  "blocks": [
+    { "type": "header", "text": { "type": "plain_text", "text": "🚨 어뷰징 의심 케이스 · BLOCK" } },
+    { "type": "section", "fields": [
+      { "type": "mrkdwn", "text": "*회원*\nDONOR 1000123 (밤샘고양이)" },
+      { "type": "mrkdwn", "text": "*Risk Score*\n160 · BLOCK" },
+      { "type": "mrkdwn", "text": "*최근 1h*\n카드 5장 · 시도 8(실패 6)" },
+      { "type": "mrkdwn", "text": "*충전*\n780,000원 · IP 2 · 기기 1" }
+    ]},
+    { "type": "section", "text": { "type": "mrkdwn",
+      "text": "*탐지 사유*\n• 동일 카드 다계정 (+40)\n• 카드 과다 사용 (+35)\n• 결제 반복 실패 (+20)" } },
+    { "type": "actions", "block_id": "fraud_case:1000123", "elements": [
+      { "type": "button", "style": "primary", "text": { "type": "plain_text", "text": "정상 해제" },
+        "action_id": "case_release", "value": "1000123",
+        "confirm": { "title": { "type": "plain_text", "text": "정상 해제" },
+          "text": { "type": "plain_text", "text": "이 케이스를 정상으로 해제할까요?" },
+          "confirm": { "type": "plain_text", "text": "해제" }, "deny": { "type": "plain_text", "text": "취소" } } },
+      { "type": "button", "text": { "type": "plain_text", "text": "결제수단 차단" },
+        "action_id": "case_block_card", "value": "1000123" },
+      { "type": "button", "style": "danger", "text": { "type": "plain_text", "text": "부정결제 확정" },
+        "action_id": "case_confirm_fraud", "value": "1000123",
+        "confirm": { "title": { "type": "plain_text", "text": "부정결제 확정" },
+          "text": { "type": "plain_text", "text": "되돌리기 어려운 처리입니다. 확정할까요?" },
+          "confirm": { "type": "plain_text", "text": "확정" }, "deny": { "type": "plain_text", "text": "취소" } } },
+      { "type": "button", "text": { "type": "plain_text", "text": "상세 보기" },
+        "action_id": "case_open_console", "url": "https://mutzini94-dot.github.io/paycheck/?case=1000123" }
+    ]}
+  ]
+}
+```
+
+### 9-2. 발송 (케이스 OPEN 훅)
+
+```kotlin
+@Component
+class SlackNotifier(
+    private val slack: SlackClient,            // Bolt SDK 또는 WebClient
+    private val props: SlackProperties         // botToken, channel, consoleBaseUrl
+) {
+    fun notifyCaseOpened(c: FraudCase, f: PaymentRiskFeatures, risk: PaymentRiskResult) {
+        slack.chatPostMessage(
+            channel = props.channel,
+            text = "🚨 어뷰징 의심 · DONOR ${c.donorId} · Risk ${risk.score} (${risk.action})",
+            blocks = SlackBlocks.fraudCase(c, f, risk, props.consoleBaseUrl),
+            metadata = mapOf("caseId" to c.id)  // 이후 메시지 갱신(ts) 매핑용
+        ).also { res -> fraudCaseRepository.saveSlackRef(c.id, res.channel, res.ts) }
+    }
+}
+
+// FraudCaseService.open() 끝에서 호출
+fun open(donorId: Long, risk: PaymentRiskResult): FraudCase {
+    val case = fraudCaseRepository.open(donorId, risk)          // SUSPECTED
+    fraudEventRepository.add(case.id, "OPEN", actor = "SYSTEM")
+    slackNotifier.notifyCaseOpened(case, risk.features, risk)   // ← Slack 발송
+    return case
+}
+```
+
+### 9-3. Slack 버튼 처리 엔드포인트
+
+Slack 앱 설정의 **Interactivity Request URL**을 이 엔드포인트로 지정한다.
+요청 서명(`X-Slack-Signature` + `X-Slack-Request-Timestamp`)을 **HMAC-SHA256**으로 검증하고,
+`action_id`에 따라 케이스를 처리한 뒤 **원본 메시지를 처리 완료 상태로 갱신**한다(`response_url` 또는 `chat.update`).
+
+```kotlin
+@RestController
+@RequestMapping("/slack")
+class SlackInteractionController(
+    private val verifier: SlackSignatureVerifier,   // signingSecret 기반
+    private val fraudCaseService: FraudCaseService,
+    private val slack: SlackClient
+) {
+    @PostMapping("/interactions", consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
+    fun onInteraction(
+        @RequestHeader("X-Slack-Signature") sig: String,
+        @RequestHeader("X-Slack-Request-Timestamp") ts: String,
+        @RequestBody rawBody: String                 // 서명 검증은 원문(raw)으로
+    ): ResponseEntity<Void> {
+        // 1) 재전송(replay) 방지: 5분 초과 요청 거부 + 서명 검증
+        require(verifier.isValid(sig, ts, rawBody)) { "invalid slack signature" }
+
+        val payload = SlackPayload.parse(rawBody)     // form의 payload=... 파싱
+        val action  = payload.actions.first()
+        val caseId  = action.value.toLong()
+        val admin   = payload.user.username
+
+        val result = when (action.actionId) {
+            "case_release"       -> fraudCaseService.release(caseId, admin)        // RELEASED
+            "case_block_card"    -> fraudCaseService.blockInstrument(caseId, admin) // 수단 BLOCKED
+            "case_confirm_fraud" -> fraudCaseService.confirmFraud(caseId, admin)    // CONFIRMED_FRAUD
+            else -> return ResponseEntity.ok().build()
+        }
+
+        // 2) 처리 결과로 원본 메시지 갱신(버튼 제거 + 처리자/시각 표기)
+        slack.chatUpdate(
+            channel = payload.channel.id, ts = payload.message.ts,
+            blocks = SlackBlocks.fraudCaseResolved(result, admin)
+        )
+        return ResponseEntity.ok().build()            // 3s 이내 200 응답
+    }
+}
+```
+
+```kotlin
+@Component
+class SlackSignatureVerifier(private val props: SlackProperties) {
+    fun isValid(signature: String, timestamp: String, body: String): Boolean {
+        if (abs(nowEpoch() - timestamp.toLong()) > 60 * 5) return false   // replay 차단
+        val base = "v0:$timestamp:$body"
+        val mac = Mac.getInstance("HmacSHA256").apply {
+            init(SecretKeySpec(props.signingSecret.toByteArray(), "HmacSHA256"))
+        }
+        val computed = "v0=" + mac.doFinal(base.toByteArray()).toHex()
+        return MessageDigest.isEqual(computed.toByteArray(), signature.toByteArray()) // 상수시간 비교
+    }
+}
+```
+
+### 9-4. "Slack URL에서 직접 처리"의 두 경로
+
+| 방식 | 동작 | 처리 위치 |
+|---|---|---|
+| **버튼(권장)** | 메시지의 정상 해제/차단/확정 버튼 클릭 → `/slack/interactions` | Slack ↔ 백엔드 (콘솔 안 열어도 됨) |
+| **상세 보기 딥링크** | `…/paycheck/?case=ID` 로 콘솔 오픈 → 해당 케이스 자동 선택 | 콘솔에서 처리 |
+
+### 9-5. 보안 · 운영 주의
+
+- **서명 검증 필수** — `signingSecret`으로 HMAC 검증하지 않으면 누구나 케이스를 처리할 수 있다.
+- **타임스탬프 5분 제한**으로 재전송 공격 차단, 비교는 **상수시간**(`MessageDigest.isEqual`).
+- `botToken` / `signingSecret`은 코드가 아닌 **시크릿 저장소**(env·Vault)에서 주입.
+- 확정처럼 되돌리기 어려운 처리는 Block Kit `confirm` 다이얼로그로 **2단계 확인**.
+- 처리 후 **버튼을 제거**해 중복 처리를 막고, 누가/언제 처리했는지 메시지에 남긴다(`FRAUD_CASE_EVENT`와 동일).
+- 알림 폭주 방지: 동일 회원 재알림은 **스레드로 묶거나** 일정 시간 **쿨다운**.
+
+---
+
+## 10. 운영 · 튜닝 체크리스트
 
 - [ ] 점수·임계값은 코드 하드코딩이 아닌 **외부 설정(`FraudProperties`)** 으로 관리 → 무중단 튜닝
 - [ ] Redis 갱신은 **Lua Script 원자 처리**
@@ -528,7 +690,7 @@ fun onPgApproved(attemptId: Long, pg: PgPaymentResult) {
 
 ---
 
-## 10. 향후 확장
+## 11. 향후 확장
 
 - `USER ↔ CARD ↔ IP ↔ DEVICE ↔ 본인인증`을 그래프로 묶어 군집(어뷰징 링) 탐지
 - 누적 라벨(확정/정상) 축적 후 Rule 기반 → **ML 기반 FDS** 로 점진 전환
