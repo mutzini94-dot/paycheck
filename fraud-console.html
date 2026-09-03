@@ -49,8 +49,8 @@ body{
 /* top bar */
 .topbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:4px 2px 18px}
 .brand{display:flex;align-items:center;gap:11px}
-.brand-mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--on-accent);
-  display:grid;place-items:center;font-weight:700;font-size:17px;letter-spacing:-.5px}
+.brand-mark{display:flex;align-items:center;height:30px}
+.brand-mark svg{height:25px;width:auto;display:block}
 .brand-name{font-weight:600;font-size:15px;letter-spacing:-.2px;line-height:1.1}
 .brand-sub{font-size:11.5px;color:var(--dim);letter-spacing:.02em}
 .kpis{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
@@ -105,6 +105,7 @@ body{
   display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .qslack:hover{background:var(--accent);color:var(--on-accent)}
 .qslack:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.slack-ico{width:14px;height:14px;flex:none;display:inline-block}
 
 /* detail */
 .detail{display:flex;flex-direction:column;gap:16px}
@@ -342,7 +343,14 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 <div class="shell">
   <div class="topbar">
     <div class="brand">
-      <div class="brand-mark">투</div>
+      <div class="brand-mark" aria-label="투네이션">
+        <svg viewBox="0 0 110 48" role="img" aria-label="투네이션 로고">
+          <rect x="11.5" y="9" width="9" height="30" rx="4.5" fill="#4C8DF6"/>
+          <rect x="1" y="19.5" width="30" height="9" rx="4.5" fill="#4C8DF6"/>
+          <circle cx="55" cy="24" r="11" fill="none" stroke="#B4D0FB" stroke-width="8"/>
+          <circle cx="90" cy="24" r="11" fill="none" stroke="#4C8DF6" stroke-width="8"/>
+        </svg>
+      </div>
       <div>
         <div class="brand-name">결제 리스크 콘솔</div>
         <div class="brand-sub">다중 카드 충전 어뷰징 탐지 · 강냉이 캐시</div>
@@ -487,6 +495,12 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 (function(){
   "use strict";
 
+  var SLACK_ICON='<svg class="slack-ico" viewBox="0 0 122.8 122.8" aria-hidden="true">'+
+    '<path d="M25.8 77.6c0 7.1-5.8 12.9-12.9 12.9S0 84.7 0 77.6s5.8-12.9 12.9-12.9h12.9v12.9zm6.5 0c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V77.6z" fill="#E01E5A"/>'+
+    '<path d="M45.2 25.8c-7.1 0-12.9-5.8-12.9-12.9S38.1 0 45.2 0s12.9 5.8 12.9 12.9v12.9H45.2zm0 6.5c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H12.9C5.8 58.1 0 52.3 0 45.2s5.8-12.9 12.9-12.9h32.3z" fill="#36C5F0"/>'+
+    '<path d="M97 45.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9-5.8 12.9-12.9 12.9H97V45.2zm-6.5 0c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V12.9C64.7 5.8 70.5 0 77.6 0s12.9 5.8 12.9 12.9v32.3z" fill="#2EB67D"/>'+
+    '<path d="M77.6 97c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9-12.9-5.8-12.9-12.9V97h12.9zm0-6.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H77.6z" fill="#ECB22E"/></svg>';
+
   /* ---- theme ---- */
   var root=document.documentElement, tb=document.getElementById("themeBtn");
   try{var sv=localStorage.getItem("frc-theme"); if(sv)root.setAttribute("data-theme",sv);}catch(e){}
@@ -630,7 +644,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
             '<span class="tag t-'+ev.action+'">'+ev.action+'</span></span>'+
         '</div>'+
         '<button class="qslack" type="button" data-slack-send="'+c.id+'" '+
-          'aria-label="DONOR '+c.id+' Slack 발송"><span aria-hidden="true">↗</span> Slack 발송</button>';
+          'aria-label="DONOR '+c.id+' Slack 발송">'+SLACK_ICON+' Slack 발송</button>';
       b.addEventListener("click",function(){selectCase(c.id);});
       b.addEventListener("keydown",function(e){
         if(e.key==="Enter"||e.key===" "){e.preventDefault();selectCase(c.id);}
