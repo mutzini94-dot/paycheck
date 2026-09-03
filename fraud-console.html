@@ -72,7 +72,7 @@ body{
 
 /* dashboard grid */
 .board{display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
-@media(max-width:900px){.board{grid-template-columns:1fr}}
+@media(max-width:900px){.board{grid-template-columns:1fr}.board>#detail{display:none}}
 
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
 .panel-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
@@ -295,6 +295,9 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 .modal-body{padding:14px 16px}
 .modal-note{font-size:12px;color:var(--muted);margin:0 0 12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .modal-note b{color:var(--text)}
+#detailModal .modal{max-width:600px}
+#detailModalBody{padding:0}
+#detailModalBody #detail{border:0;box-shadow:none;border-radius:0;background:transparent}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 /* tablet */
@@ -472,6 +475,14 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   </div>
 </div>
 
+<div class="modal-overlay" id="detailModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="케이스 상세">
+    <div class="modal-head"><span><span aria-hidden="true">▤</span> 케이스 상세</span>
+      <button class="modal-x" type="button" aria-label="닫기">✕</button></div>
+    <div class="modal-body" id="detailModalBody"></div>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
@@ -620,10 +631,9 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
         '</div>'+
         '<button class="qslack" type="button" data-slack-send="'+c.id+'" '+
           'aria-label="DONOR '+c.id+' Slack 발송"><span aria-hidden="true">↗</span> Slack 발송</button>';
-      var select=function(){selected=c.id;renderQueue();renderDetail();};
-      b.addEventListener("click",select);
+      b.addEventListener("click",function(){selectCase(c.id);});
       b.addEventListener("keydown",function(e){
-        if(e.key==="Enter"||e.key===" "){e.preventDefault();select();}
+        if(e.key==="Enter"||e.key===" "){e.preventDefault();selectCase(c.id);}
       });
       b.querySelector("[data-slack-send]").addEventListener("click",function(e){
         e.stopPropagation();openSlackModal(c);
@@ -676,7 +686,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
     Array.prototype.forEach.call(slackModalBody.querySelectorAll("[data-m]"),function(btn){
       btn.addEventListener("click",function(){
         var m=btn.getAttribute("data-m");
-        if(m==="OPEN"){selected=c.id;selTab("board");closeSlackModal();renderQueue();renderDetail();return;}
+        if(m==="OPEN"){selTab("board");closeSlackModal();selectCase(c.id);return;}
         applyAction(c,m,"slack");closeSlackModal();
       });
     });
@@ -685,6 +695,45 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
     slackModal.classList.add("show");
     var x=slackModal.querySelector(".modal-x");if(x)x.focus();
   }
+
+  /* ---- 상세 모달 (모바일에서 케이스 클릭 시) ---- */
+  var boardEl=document.querySelector(".board");
+  var detailModal=null, detailModalBody=null, detailLastFocus=null;
+  function isMobile(){return window.matchMedia("(max-width:900px)").matches;}
+  function ensureDetailModal(){
+    if(detailModal)return;
+    detailModal=document.getElementById("detailModal");
+    detailModalBody=document.getElementById("detailModalBody");
+    detailModal.addEventListener("click",function(e){if(e.target===detailModal)closeDetailModal();});
+    detailModal.querySelector(".modal-x").addEventListener("click",function(){closeDetailModal();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!detailModal.hidden)closeDetailModal();});
+  }
+  function openDetailModal(){
+    ensureDetailModal();
+    detailLastFocus=document.activeElement;
+    detailModalBody.appendChild(detail);           // #detail 노드를 모달로 이동(리스너 보존)
+    detailModal.hidden=false;
+    void detailModal.offsetWidth;
+    detailModal.classList.add("show");
+    var x=detailModal.querySelector(".modal-x");if(x)x.focus();
+  }
+  function closeDetailModal(instant){
+    if(!detailModal||detailModal.hidden)return;
+    detailModal.classList.remove("show");
+    var back=function(){detailModal.hidden=true;
+      if(detail.parentNode!==boardEl)boardEl.appendChild(detail);   // 데스크톱 패널 자리로 복귀
+      if(detailLastFocus&&detailLastFocus.focus)detailLastFocus.focus();};
+    if(instant)back(); else setTimeout(back,180);
+  }
+  function selectCase(id){
+    selected=id; renderQueue(); renderDetail();
+    if(isMobile()) openDetailModal();
+  }
+  (function bindMode(){
+    var mq=window.matchMedia("(max-width:900px)");
+    var onMq=function(){ if(!mq.matches)closeDetailModal(true); renderDetail(); };
+    if(mq.addEventListener)mq.addEventListener("change",onMq); else if(mq.addListener)mq.addListener(onMq);
+  })();
 
   /* ---- detail ---- */
   var detail=document.getElementById("detail");
